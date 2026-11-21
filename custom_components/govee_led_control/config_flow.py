@@ -102,12 +102,19 @@ class GoveeAdvancedConfigFlow(ConfigFlow, domain=DOMAIN):
             ) is not None
             status = "" if connection_ready else " — connexion BLE à vérifier"
             choices[address] = f"{name} ({address}){status}"
-        choices["refresh"] = (
-            "Actualiser — " + diagnosis if not devices
-            else "Actualiser les appareils Bluetooth"
-        )
+        if not devices and configured_addresses:
+            # Configured H70B3s are intentionally hidden from the add-device
+            # selector: they must not be reported as Bluetooth discovery failures.
+            refresh_label = (
+                f"Actualiser — {len(configured_addresses)} H70B3 déjà configuré(s), "
+                "aucun nouveau rideau à ajouter"
+            )
+        elif not devices:
+            refresh_label = "Actualiser — " + diagnosis
+        else:
+            refresh_label = "Actualiser les appareils Bluetooth"
+        choices["refresh"] = refresh_label
         choices[MODEL_H70B3] = "H70B3 : saisir une adresse MAC manuellement"
-        choices[MODEL_H6069] = "H6069 : configurer via LAN"
 
         if user_input is not None:
             selection = user_input["device"]
@@ -115,8 +122,6 @@ class GoveeAdvancedConfigFlow(ConfigFlow, domain=DOMAIN):
                 return await self.async_step_refresh()
             if selection == MODEL_H70B3:
                 return await self.async_step_h70b3()
-            if selection == MODEL_H6069:
-                return await self.async_step_h6069()
             if selection in devices:
                 address = selection.upper()
                 name = devices[selection]
