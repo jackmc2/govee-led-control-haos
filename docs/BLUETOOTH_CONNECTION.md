@@ -1,57 +1,81 @@
-# H70B3 — propriété de la connexion Bluetooth
+# H70B3 — Bluetooth, transferts d'images et GIF natifs
 
-**Statut : branche expérimentale ; tests unitaires automatisés, validation matérielle HAOS à effectuer.**
+**Statut : intégré à la version stable, testé sur un Govee H70B3 réel.**
 
-Cette évolution porte sur la Govee H70B3 (20 × 26 pixels) avec le proxy Bluetooth ESPHome existant. Elle ne remplace ni les commandes LAN/Matter standard ni l'application Govee Home.
+Le rideau **Govee H70B3 Curtain Lights 2** comporte une matrice de **20 × 26 LED (520 pixels)**. Govee LED Control — HAOS communique directement avec lui en Bluetooth (BLE) pour transférer des images et des GIF. Le **contrôle LAN**, à activer dans Govee Home, sert séparément aux commandes Marche / Arrêt du LED Player.
 
-## Fonctionnement
+## Connexion Bluetooth requise
 
-| Opération | Liaison Bluetooth | Effet sur Govee Home |
+Pour envoyer une image ou un GIF, Home Assistant doit pouvoir établir une **connexion Bluetooth active (GATT)** au H70B3 via :
+
+- un **adaptateur Bluetooth local compatible**, accessible par Home Assistant et à portée du rideau ; **ou**
+- un **proxy Bluetooth ESPHome** connectable, situé à portée du H70B3.
+
+Configuration ESPHome indicative pour un ESP32 compatible (à intégrer dans sa configuration complète) :
+
+```yaml
+esp32_ble_tracker:
+
+bluetooth_proxy:
+  active: true
+```
+
+Le proxy n'est **pas obligatoire** si Home Assistant dispose déjà d'un adaptateur Bluetooth connectable fonctionnel. Le réseau Wi-Fi seul ne suffit pas pour envoyer des images et GIF. La **MAC Bluetooth** utilisée dans l'assistant H70B3 n'est pas l'adresse IP LAN.
+
+## Fonctionnement validé sur le matériel
+
+| Opération | Connexion Bluetooth | Comportement observé |
 | --- | --- | --- |
-| Dessin / image fixe LED Studio | Connexion, authentification, upload A4/58, activation 33/05, déconnexion dès les accusés de réception | Peut reprendre le contrôle après la déconnexion |
-| Actions HAOS `set_frame`, `set_pixels`, `show_demo` | Même comportement ponctuel par défaut | Pas de connexion maintenue entre deux appels |
-| GIF ancien mode, image par image dans le navigateur | `set_frame` avec `hold_ble: true` | Le téléphone peut rester bloqué **pendant** la lecture |
-| Arrêt d'un GIF dans LED Studio | Action `release_bluetooth` | Libération demandée immédiatement |
-| GIF natif avec lecture autonome dans la H70B3 | **Non implémenté**, protocole de transfert à documenter | Objectif ultérieur |
+| Envoi d'une **image fixe** 20 × 26 | Connexion BLE authentifiée, transfert A4/58 et activation | Image affichée ; BLE libéré après transfert |
+| Envoi d'un **GIF natif** depuis LED Studio ou LED Player | Un seul transfert BLE via `upload_native_gif` | **Lecture autonome sur le H70B3**, même après fermeture de la page |
+| Changement d'effet dans **Govee Home** après un GIF | Aucune nouvelle transmission imposée par HAOS | Le nouvel effet choisi dans l'application reste actif |
+| Prévisualisation GIF dans les cartes | **Aucune transmission BLE** | Animation jouée uniquement dans le navigateur |
+| Marche / Arrêt depuis LED Player | **Aucune transmission BLE** | Commande LAN, avec « LAN Control » activé dans Govee Home |
 
-## Services
+**Validation matérielle effectuée le 21 novembre 2026** : envoi d'un GIF natif, lecture maintenue après fermeture de LED Studio et reprise du contrôle depuis Govee Home. Cela confirme le fonctionnement sur **l'appareil testé**, sans garantir tous les firmwares ni tous les GIF possibles.
+
+### Pourquoi le Bluetooth ne reste pas occupé
+
+Le transfert d'image ou de GIF s'effectue de manière ponctuelle. L'intégration authentifie la connexion BLE, envoie le contenu, attend les réponses du rideau puis libère la connexion. Elle ne rediffuse pas continuellement les images d'un GIF natif.
+
+Le mode historique de diffusion **image par image** peut maintenir temporairement une connexion BLE lorsqu'il utilise `hold_ble: true`. Il est distinct de l'envoi de GIF natif et peut empêcher Govee Home de prendre la main pendant la diffusion.
+
+## Services Home Assistant
 
 ### Image fixe
 
-Le service `govee_led_control.set_frame` accepte désormais `hold_ble: false` (valeur par défaut), avec exactement 520 couleurs.
+`govee_led_control.set_frame` : envoie une trame de **520 couleurs**. Le paramètre `hold_ble: false` (valeur par défaut) libère le Bluetooth après l'envoi.
 
-### Streaming (rétrocompatibilité du navigateur)
+### GIF natif autonome
 
-`hold_ble: true` maintient temporairement la connexion pendant la succession d'images. Le mécanisme existant de déconnexion sur inactivité continue de s'appliquer et est configurable dans les options de l'intégration.
+`govee_led_control.upload_native_gif` : reçoit le contenu GIF 20 × 26 au format Base64 et le transmet en **une seule opération Bluetooth**. LED Studio et LED Player utilisent ce service pour les GIF natifs. La lecture se poursuit directement sur le rideau.
 
-### Libération manuelle
+### Libérer explicitement une connexion BLE
 
 ```yaml
 action: govee_led_control.release_bluetooth
 data:
-  config_entry_id: "<l'identifiant de ta configuration H70B3>"
+  config_entry_id: "ID_DE_L_ENTREE_H70B3"
 ```
 
-N'utiliser cette action que lorsqu'aucun autre envoi n'est en cours ; elle attend la fin des transmissions déjà engagées.
+Cette commande est destinée notamment à interrompre la possession BLE d'un ancien mode de diffusion. Il n'est normalement pas nécessaire de l'utiliser après un transfert natif.
 
 ## Diagnostic de découverte Bluetooth
 
-Le parcours de configuration affiche une option **Actualiser** accompagnée d'un diagnostic de ce que voit réellement le gestionnaire Bluetooth de Home Assistant :
+L'assistant de configuration **Ajouter un appareil** propose une option **Actualiser** et s'appuie sur les annonces Bluetooth connues de Home Assistant.
 
-- **Aucun scanner connectable** : pas d'adaptateur BLE capable d'établir les connexions GATT nécessaires à la H70B3. Vérifier que l'ESPHome dispose de `esp32_ble_tracker:` et `bluetooth_proxy:\n  active: true` et qu'il est intégré à HAOS.
-- **Scanner(s) mais aucune annonce** : vérifier que le proxy ESPHome est bien connecté, assez proche de la guirlande et que son mode de scan est **Actif** (et pas seulement `bluetooth_proxy.active`). Sur certaines versions de HAOS, le mode Auto a empêché les annonces BLE de remonter.
-- **H70B3 visible sans lien connectable** : la guirlande est annoncée, mais il faut un adaptateur/proxy autorisant les connexions actives.
-- **Autres annonces BLE visibles, sans H70B3** : vérifier la portée et l'état de la guirlande, puis relancer la découverte.
+- **Un H70B3 est déjà configuré** : il n'est **pas reproposé** comme nouvel appareil. Cela ne signifie pas qu'il est hors de portée.
+- **Aucun scanner connectable** : vérifier l'adaptateur Bluetooth ou le proxy ESPHome actif (`bluetooth_proxy.active: true`).
+- **Des scanners sont présents, mais aucune annonce H70B3** : vérifier la portée Bluetooth, le fonctionnement du proxy et l'état du rideau.
+- **H70B3 visible, mais sans connexion possible** : vérifier que l'adaptateur ou le proxy autorise bien les **connexions BLE actives**.
+- **Découverte indisponible** : l'ajout manuel par adresse **MAC Bluetooth** reste possible, sans garantir la connectivité si le rideau est hors de portée.
 
-La liste repose sur les annonces BLE déjà reçues par HAOS, **pas sur l'adresse IP LAN** de la guirlande. Le bouton Actualiser relit cette liste ; il ne déclenche pas à lui seul un scan physique autonome.
+Le bouton **Actualiser** relit les annonces déjà remontées à Home Assistant ; il ne déclenche pas nécessairement un nouveau balayage radio.
 
-Voir : [documentation ESPHome Bluetooth Proxy](https://esphome.io/components/bluetooth_proxy/) et [incident Home Assistant relatif au mode de scan Auto](https://github.com/home-assistant/core/issues/175664).
+Pour aller plus loin : [ESPHome Bluetooth Proxy](https://esphome.io/components/bluetooth_proxy/) et [détails du transfert GIF natif](NATIVE_GIF_EXPERIMENT.md).
 
-## Vérifications matérielles avant fusion dans main
+## Portée de la validation
 
-1. Dans HAOS, constater que le capteur de transport indique `connected: false` après une image fixe, puis ouvrir Govee Home et vérifier que les commandes passent.
-2. Lancer et arrêter un GIF navigateur dans LED Studio : vérifier que la lecture actuelle fonctionne et que `connected` repasse à `false` après l'arrêt.
-3. Vérifier les changements ponctuels de pixel, la galerie et les opérations H6069 pour exclure toute régression.
-4. Ne fusionner dans `main` qu'après validation sur le vrai matériel.
+Les images fixes et les GIF natifs ont été validés sur le **H70B3 testé**. Les tests automatisés couvrent également les encodeurs et les appels de service, mais ne remplacent pas les essais physiques pour chaque firmware ou configuration de proxy.
 
-Aucune promesse de GIF autonome à ce stade : le protocole de transfert complet et de déclenchement des animations natives doit encore être identifié.
+Le support du modèle H6069 est conservé séparément dans l'intégration ; il **n'utilise pas le protocole GIF Bluetooth H70B3**.
