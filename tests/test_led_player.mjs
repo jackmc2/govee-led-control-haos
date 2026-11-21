@@ -242,3 +242,30 @@ console.log("LED Player: static H70B3 image, native GIF, H6069 image OK");
   assert.equal(source.includes("localStorage"), false,
     "HA storage, rather than the current browser, owns the Player brightness");
 }
+
+// The player gallery must be sorted by artwork name (A-Z), regardless of
+// save time; the natural sort handles French accents, case and numeric suffixes.
+{
+  const { instance } = fixture({ id: "test", name: "Test", target: "h70b3", kind: "art", colors });
+  instance._items = [];
+  instance._selectedId = null;
+  const refresh = { disabled: false };
+  instance.shadowRoot = { getElementById: () => refresh };
+  instance._renderItems = () => {};
+  instance._statusUpdate = () => {};
+  const gallery = [
+    { id: "z", name: "Zèbre", updated_at: "2026-11-21T12:00:00Z" },
+    { id: "n10", name: "Noël 10", updated_at: "2026-11-21T13:00:00Z" },
+    { id: "e", name: "Étoile", updated_at: "2026-11-21T14:00:00Z" },
+    { id: "n2", name: "noël 2", updated_at: "2026-11-21T11:00:00Z" },
+    { id: "a", name: "Ange", updated_at: "2026-11-21T15:00:00Z" },
+  ];
+  instance._hass.callWS = async () => ({ items: gallery });
+  await instance._loadGallery();
+  assert.deepEqual(Array.from(instance._items, (item) => item.id), ["a", "e", "n2", "n10", "z"]);
+  assert.equal(instance._selectedId, "a", "first gallery item is the first alphabetically");
+  instance._selectedId = "n10";
+  await instance._loadGallery();
+  assert.equal(instance._selectedId, "n10", "refresh preserves the selected artwork");
+  assert.equal(refresh.disabled, false, "refresh button re-enabled after loading");
+}

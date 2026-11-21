@@ -69,7 +69,7 @@ L'éditeur est **masqué au démarrage** : il apparaît uniquement après un imp
 - Le bouton **⏻ Éteindre** en haut à droite reflète l'état de la guirlande et commande son alimentation via le LAN.
 - Les filtres **Tout / Images / GIF** et **Actualiser** partagent la même ligne.
 - L'aperçu central affiche la création sélectionnée, le nombre d'images et la luminosité, au-dessus du bouton **Envoyer sur le rideau**.
-- La galerie est organisée en **deux colonnes sous la prévisualisation** : les vignettes représentent les créations réellement enregistrées.
+- La galerie est organisée en **deux colonnes sous la prévisualisation** et **triée par ordre alphabétique (A → Z)**, y compris après actualisation et avec les filtres Images / GIF.
 
 Pour les GIF natifs H70B3, le fichier est transféré en une opération Bluetooth : **le rideau poursuit la lecture après fermeture de la carte ou du navigateur**. L'application Govee Home peut reprendre le contrôle et changer l'effet.
 

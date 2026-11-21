@@ -427,7 +427,10 @@ class GoveeLedPlayer extends HTMLElement {
     try {
       const response = await this._hass.callWS({ type: "govee_led_control/gallery/list" });
       this._items = Array.isArray(response.items) ? response.items : [];
-      this._items.sort((a, b) => String(b.updated_at || b.created_at || "").localeCompare(String(a.updated_at || a.created_at || "")));
+      this._items.sort((a, b) =>
+        String(a.name || "").localeCompare(String(b.name || ""), "fr", { sensitivity: "base", numeric: true }) ||
+        String(a.id || "").localeCompare(String(b.id || ""))
+      );
       if (!this._items.some((item) => item.id === this._selectedId)) {
         this._selectedId = this._items[0] && this._items[0].id || null;
       }

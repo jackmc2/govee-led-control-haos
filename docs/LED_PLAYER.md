@@ -77,3 +77,9 @@ actualisation, changement de navigateur et redémarrage de Home Assistant.
   Pour appliquer le nouveau niveau à une animation déjà en cours, il faut
   renvoyer la création depuis le Player.
 - Le réglage n'altère pas les créations enregistrées dans la galerie.
+
+## Classement de la bibliothèque (0.5.9)
+
+Dans **LED Player**, les créations sont affichées par **ordre alphabétique de leur nom (A → Z)**, indépendamment de leur date d'ajout ou de modification. Le tri tient compte des accents, ignore les différences majuscules/minuscules et classe naturellement les numéros (par exemple, « Noël 2 » avant « Noël 10 »).
+
+Ce classement s'applique à la galerie complète et aux filtres **Tout / Images / GIF**, y compris après **Actualiser**. Il ne modifie ni les créations ni leur ordre de stockage dans Home Assistant.
