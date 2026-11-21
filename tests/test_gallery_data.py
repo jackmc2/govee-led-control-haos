@@ -42,7 +42,7 @@ class GalleryDataTests(unittest.TestCase):
         item = gallery_data.validate_gallery_item({**base, "category": "  Noël  "})
         self.assertEqual(item["category"], "Noël")
         self.assertEqual(gallery_data.validate_gallery_item(base)["category"], "")
-        for category in ("X" * 41, "Noël\\nHiver", 123, ["Noël"]):
+        for category in ("X" * 41, "Noël\nHiver", 123, ["Noël"]):
             with self.subTest(category=category), self.assertRaises(ValueError):
                 gallery_data.validate_gallery_item({**base, "category": category})
 
