@@ -55,6 +55,7 @@
 
 - La zone **Importer ou créer** permet de charger un PNG, JPEG, WebP ou GIF, ou de commencer une nouvelle image / animation.
 - La **galerie** liste les créations enregistrées, avec aperçu, bouton **Modifier** et suppression.
+- Une **catégorie libre** peut être attribuée à chaque image ou GIF lors de son enregistrement (avec suggestions des catégories existantes).
 - En ouvrant une création, l'éditeur affiche la matrice **20 × 26**, les outils de dessin, la palette, la luminosité et les images du GIF.
 - Le bouton **▶ Lire** prévisualise localement l'animation, sans transfert Bluetooth.
 
@@ -69,7 +70,7 @@ L'éditeur est **masqué au démarrage** : il apparaît uniquement après un imp
 - Le bouton **⏻ Éteindre** en haut à droite reflète l'état de la guirlande et commande son alimentation via le LAN.
 - Les filtres **Tout / Images / GIF** et **Actualiser** partagent la même ligne.
 - L'aperçu central affiche la création sélectionnée, le nombre d'images et la luminosité, au-dessus du bouton **Envoyer sur le rideau**.
-- La galerie est organisée en **deux colonnes sous la prévisualisation** et **triée par ordre alphabétique (A → Z)**, y compris après actualisation et avec les filtres Images / GIF.
+- La galerie est organisée en **deux colonnes sous la prévisualisation**, **triée par ordre alphabétique (A → Z)** et filtrable par **catégorie personnalisée** (Noël, Halloween, etc.) ainsi que par type Images / GIF.
 
 Pour les GIF natifs H70B3, le fichier est transféré en une opération Bluetooth : **le rideau poursuit la lecture après fermeture de la carte ou du navigateur**. L'application Govee Home peut reprendre le contrôle et changer l'effet.
 

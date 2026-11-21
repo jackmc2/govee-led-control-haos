@@ -64,6 +64,10 @@ class ArtworkGallery:
         )
         now = datetime.now(UTC).isoformat()
         if existing is not None:
+            # Preserve categories when an older LED Studio client saves an item
+            # without knowing about the optional category field.
+            if "category" not in raw:
+                item["category"] = existing.get("category", "")
             item["id"] = existing["id"]
             item["created_at"] = existing.get("created_at", now)
             item["updated_at"] = now

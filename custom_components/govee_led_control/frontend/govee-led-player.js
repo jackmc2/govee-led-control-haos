@@ -14,6 +14,15 @@ function playerEscape(value) {
   );
 }
 
+function playerCategory(item) {
+  return typeof item?.category === "string" ? item.category.trim() : "";
+}
+
+function playerCategoryKey(item) {
+  const category = playerCategory(item);
+  return category ? "category:" + category.toLocaleLowerCase("fr") : "uncategorized";
+}
+
 function playerColors(item) {
   return item && item.kind === "animation"
     ? item.frames && item.frames[0] && item.frames[0].colors
@@ -129,6 +138,7 @@ class GoveeLedPlayer extends HTMLElement {
     this._items ||= [];
     this._selectedId ||= null;
     this._filter ||= "all";
+    this._categoryFilter ||= "all";
     this._status ||= "Choisissez une création enregistrée dans LED Studio.";
     this._error ||= false;
     this._busy ||= false;
@@ -196,6 +206,10 @@ class GoveeLedPlayer extends HTMLElement {
       ".filters { display:flex; gap:6px; flex-wrap:wrap; min-width:0; }",
       ".filter { border-radius:8px; background:rgba(255,255,255,.055); color:#acb3c8; padding:8px 11px; font-size:12px; }",
       ".filter.active { color:#fff; background:rgba(134,108,255,.24); box-shadow:inset 0 0 0 1px rgba(134,108,255,.55); }",
+      ".category-bar { display:flex; align-items:center; gap:10px; margin:0 0 14px; }",
+      ".category-bar label { color:#B4BCD1; font-size:12px; white-space:nowrap; }",
+      ".category-bar select { flex:1; min-width:0; border:1px solid rgba(134,108,255,.35); border-radius:9px; padding:9px 11px; background:#202438; color:#F5F4FF; font:inherit; font-size:13px; }",
+      ".category-tag { color:#B6A3FF !important; }",
       ".items { max-height:520px; overflow-y:auto; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; padding-right:2px; align-content:start; }",
       ".item { width:100%; min-width:0; min-height:136px; display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center; text-align:center; border-radius:11px; padding:10px 7px; background:rgba(255,255,255,.04); color:#e7e9f6; border:1px solid transparent; }",
       ".item.active { background:rgba(134,108,255,.15); border-color:rgba(134,108,255,.55); }",
@@ -234,6 +248,9 @@ class GoveeLedPlayer extends HTMLElement {
       '<button type="button" class="filter" data-filter="art">Images</button>' +
       '<button type="button" class="filter" data-filter="animation">GIF</button>' +
       '</div><button class="refresh" id="refresh" type="button">↻ Actualiser</button></div>' +
+      '<div class="category-bar"><label for="category-filter">Catégorie</label>' +
+      '<select id="category-filter" aria-label="Filtrer la bibliothèque par catégorie">' +
+      '<option value="all">Toutes les catégories</option></select></div>' +
       '<div class="layout">' +
       '<section class="detail"><h3 id="selected-name">Sélectionnez une création</h3>' +
       '<div id="selected-desc" class="muted">Images et GIF enregistrés dans LED Studio</div>' +
@@ -252,6 +269,10 @@ class GoveeLedPlayer extends HTMLElement {
 
     this.shadowRoot.getElementById("refresh").addEventListener("click", () => this._loadGallery());
     this.shadowRoot.getElementById("power").addEventListener("click", () => this._togglePower());
+    this.shadowRoot.getElementById("category-filter").addEventListener("change", (event) => {
+      this._categoryFilter = event.target.value;
+      this._renderItems();
+    });
     this.shadowRoot.querySelectorAll("[data-filter]").forEach((button) => {
       button.addEventListener("click", () => {
         this._filter = button.dataset.filter;
@@ -431,6 +452,7 @@ class GoveeLedPlayer extends HTMLElement {
         String(a.name || "").localeCompare(String(b.name || ""), "fr", { sensitivity: "base", numeric: true }) ||
         String(a.id || "").localeCompare(String(b.id || ""))
       );
+      this._renderCategoryFilter();
       if (!this._items.some((item) => item.id === this._selectedId)) {
         this._selectedId = this._items[0] && this._items[0].id || null;
       }
@@ -450,6 +472,30 @@ class GoveeLedPlayer extends HTMLElement {
     return this._items.find((item) => item.id === this._selectedId) || null;
   }
 
+  _renderCategoryFilter() {
+    const select = this.shadowRoot?.getElementById("category-filter");
+    if (!select || !("innerHTML" in select)) return;
+    const categories = new Map();
+    let hasUncategorized = false;
+    for (const item of this._items) {
+      const category = playerCategory(item);
+      if (!category) hasUncategorized = true;
+      else if (!categories.has(playerCategoryKey(item))) categories.set(playerCategoryKey(item), category);
+    }
+    const values = [...categories.entries()].sort((a, b) =>
+      a[1].localeCompare(b[1], "fr", { sensitivity: "base", numeric: true })
+    );
+    const available = new Set(values.map(([key]) => key));
+    if (hasUncategorized) available.add("uncategorized");
+    if (this._categoryFilter !== "all" && !available.has(this._categoryFilter)) {
+      this._categoryFilter = "all";
+    }
+    select.innerHTML = '<option value="all">Toutes les catégories</option>' +
+      (hasUncategorized ? '<option value="uncategorized">Sans catégorie</option>' : '') +
+      values.map(([key, name]) => '<option value="' + playerEscape(key) + '">' + playerEscape(name) + '</option>').join("");
+    select.value = this._categoryFilter;
+  }
+
   _renderItems() {
     if (!this.shadowRoot) return;
     this.shadowRoot.querySelectorAll("[data-filter]").forEach((button) =>
@@ -457,8 +503,12 @@ class GoveeLedPlayer extends HTMLElement {
     );
     const list = this.shadowRoot.getElementById("items");
     const filtered = this._items.filter((item) =>
-      this._filter === "all" || item.kind === this._filter
+      (this._filter === "all" || item.kind === this._filter) &&
+      (this._categoryFilter === "all" || playerCategoryKey(item) === this._categoryFilter)
     );
+    if (!filtered.some((item) => item.id === this._selectedId)) {
+      this._selectedId = filtered[0]?.id || null;
+    }
     if (!filtered.length) {
       list.innerHTML = '<div class="empty">' + (this._items.length
         ? "Aucune création de ce type."
@@ -473,6 +523,7 @@ class GoveeLedPlayer extends HTMLElement {
           '<canvas class="thumb" data-thumb="' + playerEscape(item.id) + '"></canvas>' +
           '<span class="item-meta"><strong>' +
           playerEscape(item.name) + '</strong><small>' + type + ' · ' + target +
+          '</small><small class="category-tag">' + playerEscape(playerCategory(item) || "Sans catégorie") +
           "</small></span></button>";
       }).join("");
       list.querySelectorAll("[data-thumb]").forEach((canvas) => {
@@ -511,7 +562,8 @@ class GoveeLedPlayer extends HTMLElement {
     }
     title.textContent = item.name || "Sans nom";
     info.textContent = (item.target === "h6069" ? "Panneaux H6069" : "Rideau H70B3") +
-      (item.kind === "animation" ? " · Animation enregistrée" : " · Image enregistrée");
+      (item.kind === "animation" ? " · Animation enregistrée" : " · Image enregistrée") +
+      " · " + (playerCategory(item) || "Sans catégorie");
     kind.textContent = item.kind === "animation"
       ? (item.frames || []).length + " images"
       : "Image fixe";

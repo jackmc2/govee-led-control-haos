@@ -142,10 +142,12 @@ function fixture() {
 {
   const { studio, calls, get } = fixture();
   get("#gif-editor-name").value = "Mon dessin";
+  get("#gif-editor-category").value = "  Noël  ";
   await studio._saveGallery("art");
   const save = calls.find((call) => call.ws?.type === "govee_led_control/gallery/save");
   assert.ok(save);
   assert.equal(save.ws.item.kind, "art");
+  assert.equal(save.ws.item.category, "Noël");
   assert.equal(save.ws.item.colors.length, 520);
   assert.equal(studio._editingGalleryId, "stored-id");
   assert.equal(studio._editingGalleryKind, "art");
@@ -156,10 +158,12 @@ function fixture() {
   studio._editorKind = "animation";
   studio._gifFrames.push({ colors: Array(520).fill("#007700"), duration: 180 });
   get("#gif-editor-name").value = "Mon animation";
+  get("#gif-editor-category").value = "Halloween";
   await studio._saveGallery("animation");
   const save = calls.find((call) => call.ws?.type === "govee_led_control/gallery/save");
   assert.ok(save);
   assert.equal(save.ws.item.kind, "animation");
+  assert.equal(save.ws.item.category, "Halloween");
   assert.equal(save.ws.item.frames.length, 2);
 }
 
@@ -283,3 +287,20 @@ function fixture() {
 console.log("LED Studio: hidden until selection, local GIF play/pause and frame timing OK");
 
 console.log("LED Studio: unified image/GIF editor, import, save, native upload and static transfer OK");
+
+// Editing an existing artwork restores its category without changing the pixels.
+{
+  const { studio, get } = fixture();
+  studio._galleryItems = [{
+    id: "old", name: "Sapin", target: "h70b3", kind: "art",
+    category: "Noël", colors: Array(520).fill("#136524"), brightness: 90,
+  }];
+  studio._showGifFrame = () => {};
+  studio._focusEditor = () => {};
+  studio._openGalleryItem("old");
+  assert.equal(get("#gif-editor-category").value, "Noël");
+  assert.equal(studio._editingGalleryId, "old");
+  studio._galleryItems[0].category = undefined; // Legacy saved creation.
+  studio._openGalleryItem("old");
+  assert.equal(get("#gif-editor-category").value, "");
+}

@@ -32,6 +32,19 @@ class GalleryDataTests(unittest.TestCase):
         )
         self.assertEqual(item["name"], "Spookje")
         self.assertEqual(item["colors"], ["#aabbcc"] * 520)
+        self.assertEqual(item["category"], "", "Existing artworks default to Sans catégorie")
+
+    def test_categories_are_normalized_and_validated(self) -> None:
+        base = {
+            "name": "Noël", "target": "h70b3", "kind": "art",
+            "colors": ["#123456"] * 520,
+        }
+        item = gallery_data.validate_gallery_item({**base, "category": "  Noël  "})
+        self.assertEqual(item["category"], "Noël")
+        self.assertEqual(gallery_data.validate_gallery_item(base)["category"], "")
+        for category in ("X" * 41, "Noël\\nHiver", 123, ["Noël"]):
+            with self.subTest(category=category), self.assertRaises(ValueError):
+                gallery_data.validate_gallery_item({**base, "category": category})
 
     def test_animation_frames_are_validated(self) -> None:
         item = gallery_data.validate_gallery_item(

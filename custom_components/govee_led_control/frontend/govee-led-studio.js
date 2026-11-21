@@ -256,6 +256,10 @@ class GoveeLedStudio extends HTMLElement {
                 <button class="gif-clear-still" id="gif-clear-still" type="button">Effacer l'image</button>
                 <div class="gif-editor-save">
                   <input id="gif-editor-name" maxlength="64" placeholder="Nom de la création" aria-label="Nom de la création">
+                  <label class="category-editor-label" for="gif-editor-category">Catégorie
+                    <input id="gif-editor-category" maxlength="40" list="govee-category-list" placeholder="Sans catégorie" autocomplete="off">
+                    <datalist id="govee-category-list"></datalist>
+                  </label>
                   <button id="gif-editor-save" class="primary" type="button">Enregistrer l’image</button>
                 </div>
                 <small>Cliquez ou glissez sur les pixels pour dessiner. Image fixe et GIF utilisent les mêmes outils. Les modifications restent locales jusqu’à l’enregistrement ou l’envoi.</small>
@@ -679,6 +683,7 @@ class GoveeLedStudio extends HTMLElement {
     this._editingGalleryId = null;
     this._editingGalleryKind = null;
     this.shadowRoot.querySelector("#gif-editor-name").value = "Nouvelle image";
+    this.shadowRoot.querySelector("#gif-editor-category").value = "";
     this.shadowRoot.querySelector("#gif-info").textContent = "Nouvelle image · 20 × 26";
     this._showGifFrame();
     this._focusEditor();
@@ -704,6 +709,7 @@ class GoveeLedStudio extends HTMLElement {
     this._editingGalleryId = null;
     this._editingGalleryKind = null;
     this.shadowRoot.querySelector("#gif-editor-name").value = "Mon GIF";
+    this.shadowRoot.querySelector("#gif-editor-category").value = "";
     this.shadowRoot.querySelector("#gif-info").textContent = "Nouveau GIF · 2 images · prêt à éditer";
     this._showGifFrame();
     this._focusEditor();
@@ -881,6 +887,7 @@ class GoveeLedStudio extends HTMLElement {
       this._editingGalleryKind = null;
       this._nativeGifReady = isGif;
       this.shadowRoot.querySelector("#gif-editor-name").value = file.name.replace(/\.[^.]+$/, "").slice(0, 64);
+      this.shadowRoot.querySelector("#gif-editor-category").value = "";
       this._showGifFrame();
       this._focusEditor();
       const name = isGif ? "GIF" : "Image";
@@ -991,6 +998,7 @@ class GoveeLedStudio extends HTMLElement {
     try {
       const result = await this._hass.callWS({ type: "govee_led_control/gallery/list" });
       this._galleryItems = Array.isArray(result?.items) ? result.items : [];
+      this._updateCategorySuggestions();
       this._galleryLoaded = true;
       this._renderGallery();
     } catch (error) {
@@ -1000,6 +1008,22 @@ class GoveeLedStudio extends HTMLElement {
     } finally {
       this._galleryLoading = false;
     }
+  }
+
+  _updateCategorySuggestions() {
+    const datalist = this.shadowRoot?.querySelector("#govee-category-list");
+    if (!datalist) return;
+    const unique = new Map();
+    for (const item of this._galleryItems) {
+      const category = typeof item.category === "string" ? item.category.trim() : "";
+      if (category && !unique.has(category.toLocaleLowerCase("fr"))) {
+        unique.set(category.toLocaleLowerCase("fr"), category);
+      }
+    }
+    datalist.innerHTML = [...unique.values()]
+      .sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base", numeric: true }))
+      .map((name) => '<option value="' + escapeHtml(name) + '"></option>')
+      .join("");
   }
 
   async _saveGallery(kind) {
@@ -1013,8 +1037,17 @@ class GoveeLedStudio extends HTMLElement {
       return this._setStatus("Chargez ou créez un GIF pour l'enregistrer", true);
     }
 
+    const categoryInput = this.shadowRoot.querySelector("#gif-editor-category");
+    const rawCategory = categoryInput.value.trim();
+    if (rawCategory.length > 40) {
+      return this._setStatus("La catégorie ne doit pas dépasser 40 caractères.", true);
+    }
+    const existingCategory = this._galleryItems
+      .map((entry) => typeof entry.category === "string" ? entry.category.trim() : "")
+      .find((value) => value && value.toLocaleLowerCase("fr") === rawCategory.toLocaleLowerCase("fr"));
+    const category = existingCategory || rawCategory;
     const target = "h70b3";
-    const item = { name, kind, target, brightness: this._brightness };
+    const item = { name, category, kind, target, brightness: this._brightness };
     if (kind === "animation") {
       item.frames = this._gifFrames.map((frame) => ({ colors: [...frame.colors], duration: frame.duration }));
     } else {
@@ -1067,7 +1100,7 @@ class GoveeLedStudio extends HTMLElement {
           (animated ? '<span class="gallery-gif-badge">GIF</span>' : '') +
         '</div>' +
         '<div class="gallery-meta"><strong>' + escapeHtml(item.name) + '</strong><small>' +
-          detail + '</small></div>' +
+          detail + ' · ' + escapeHtml(item.category || "Sans catégorie") + '</small></div>' +
         '<button type="button" data-gallery-load="' + escapeHtml(item.id) + '">Modifier</button>' +
         '<button type="button" class="danger compact" data-gallery-delete="' + escapeHtml(item.id) +
           '" aria-label="Supprimer ' + escapeHtml(item.name) + '">Supprimer</button>' +
@@ -1168,6 +1201,7 @@ class GoveeLedStudio extends HTMLElement {
     this._editingGalleryKind = null;
     this._nativeGifReady = false;
     this.shadowRoot.querySelector("#gif-editor-name").value = item.name;
+    this.shadowRoot.querySelector("#gif-editor-category").value = item.category || "";
     this._brightness = clamp(Number(item.brightness) || 100, 1, 100);
     this.shadowRoot.querySelector("#brightness").value = this._brightness;
     this.shadowRoot.querySelector("#brightness-value").textContent = this._brightness + "%";
@@ -1249,7 +1283,10 @@ class GoveeLedStudio extends HTMLElement {
       .gif-clear-still { justify-self:start; font-size:12px; padding:7px 12px; }
       .gif-editor:not(.is-still) .gif-clear-still { display:none; }
       .gif-editor-save { display:grid; grid-template-columns:minmax(100px,1fr) auto; gap:7px; }
-      .gif-editor-save input { min-width:0; border:1px solid rgba(255,255,255,.14); background:#222532; color:white; border-radius:8px; padding:9px; }
+      .gif-editor-save input { min-width:0; width:100%; box-sizing:border-box; border:1px solid rgba(255,255,255,.14); background:#222532; color:white; border-radius:8px; padding:9px; }
+      .gif-editor-save #gif-editor-name { grid-column:1/-1; }
+      .gif-editor-save .category-editor-label { display:grid; min-width:0; gap:5px; color:#b8c0d4; font-size:12px; }
+      .gif-editor-save #gif-editor-save { align-self:end; min-height:38px; }
       .gif-editor-save .primary { margin:0; width:auto; font-size:12px; }
       .gif-editor small { color:#a0a8b6; font-size:11px; line-height:1.45; }
       .matrix-shell { width:min(100%,420px); box-sizing:border-box; margin:auto; padding:12px; border-radius:15px; background:#030408; box-shadow:inset 0 0 30px rgba(0,0,0,.8), 0 20px 50px rgba(0,0,0,.22); }

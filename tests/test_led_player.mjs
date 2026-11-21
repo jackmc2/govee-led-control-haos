@@ -269,3 +269,40 @@ console.log("LED Player: static H70B3 image, native GIF, H6069 image OK");
   assert.equal(instance._selectedId, "n10", "refresh preserves the selected artwork");
   assert.equal(refresh.disabled, false, "refresh button re-enabled after loading");
 }
+
+// Category selector complements, rather than replaces, the image/GIF filters.
+{
+  const { instance } = fixture({ id:"a", name:"Ange", kind:"art", target:"h70b3", colors });
+  instance._items = [
+    { id:"a", name:"Ange", category:"Noël", kind:"art", target:"h70b3", colors },
+    { id:"b", name:"Boule", category:"noël", kind:"animation", target:"h70b3", frames:[frameA] },
+    { id:"c", name:"Chat", kind:"art", target:"h70b3", colors },
+    { id:"d", name:"Dino", category:"Halloween", kind:"animation", target:"h70b3", frames:[frameB] },
+  ];
+  instance._categoryFilter = "all";
+  instance._filter = "all";
+  const select = { innerHTML:"", value:"all" };
+  const list = { innerHTML:"", querySelectorAll: () => [] };
+  instance.shadowRoot = {
+    getElementById: (id) => id === "category-filter" ? select : list,
+    querySelectorAll: () => [],
+  };
+  instance._renderSelection = () => {};
+  instance._renderCategoryFilter();
+  assert.match(select.innerHTML, /Toutes les catégories/);
+  assert.match(select.innerHTML, /Sans catégorie/);
+  assert.match(select.innerHTML, /Halloween/);
+  assert.equal((select.innerHTML.match(/>Noël<\\/option>/g) || []).length, 1,
+    "same category in different case appears once");
+  instance._categoryFilter = "category:noël";
+  instance._filter = "animation";
+  instance._renderItems();
+  assert.match(list.innerHTML, /Boule/);
+  assert.doesNotMatch(list.innerHTML, /Ange|Chat|Dino/);
+  assert.equal(instance._selectedId, "b");
+  instance._categoryFilter = "uncategorized";
+  instance._filter = "all";
+  instance._renderItems();
+  assert.match(list.innerHTML, /Chat/);
+  assert.doesNotMatch(list.innerHTML, /Ange|Boule|Dino/);
+}

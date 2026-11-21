@@ -83,3 +83,11 @@ actualisation, changement de navigateur et redémarrage de Home Assistant.
 Dans **LED Player**, les créations sont affichées par **ordre alphabétique de leur nom (A → Z)**, indépendamment de leur date d'ajout ou de modification. Le tri tient compte des accents, ignore les différences majuscules/minuscules et classe naturellement les numéros (par exemple, « Noël 2 » avant « Noël 10 »).
 
 Ce classement s'applique à la galerie complète et aux filtres **Tout / Images / GIF**, y compris après **Actualiser**. Il ne modifie ni les créations ni leur ordre de stockage dans Home Assistant.
+
+## Catégories personnalisées (0.5.10)
+
+- Dans **LED Studio**, le champ **Catégorie** est disponible dans l'éditeur pour chaque image et GIF. Saisissez un nom libre (40 caractères maximum) ou reprenez une catégorie suggérée depuis les créations existantes.
+- Les créations déjà sauvegardées restent présentes et apparaissent sous **Sans catégorie** ; il suffit de les ouvrir avec **Modifier**, choisir une catégorie puis **Enregistrer**.
+- Dans **LED Player**, la liste **Catégorie** propose **Toutes les catégories**, **Sans catégorie** et les catégories présentes dans la galerie. Elle fonctionne en combinaison avec les filtres **Tout / Images / GIF**.
+- L'ordre alphabétique est conservé dans chaque catégorie. Le filtre n'affecte jamais l'image ou le GIF actuellement affiché sur le rideau ; il modifie seulement la sélection de la galerie dans le navigateur.
+- Les catégories sont enregistrées avec les créations dans le stockage Home Assistant existant : aucune migration, suppression ou nouvelle entité n'est nécessaire.

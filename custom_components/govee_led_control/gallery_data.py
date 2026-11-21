@@ -7,6 +7,7 @@ from typing import Any
 
 MAX_ITEMS = 50
 MAX_NAME_LENGTH = 64
+MAX_CATEGORY_LENGTH = 40
 MAX_ANIMATION_FRAMES = 120
 _HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 
@@ -43,12 +44,20 @@ def validate_gallery_item(raw: object) -> dict[str, Any]:
     if kind == "animation" and target != "h70b3":
         raise ValueError("Animations are only supported for H70B3")
 
+    category = raw.get("category", "")
+    if not isinstance(category, str):
+        raise ValueError("Artwork category must be a string")
+    category = category.strip()
+    if len(category) > MAX_CATEGORY_LENGTH or any(ord(char) < 32 for char in category):
+        raise ValueError("Artwork category must be at most 40 characters on one line")
+
     brightness = int(raw.get("brightness", 100))
     if not 1 <= brightness <= 100:
         raise ValueError("Brightness must be between 1 and 100")
 
     item: dict[str, Any] = {
         "name": name,
+        "category": category,
         "target": target,
         "kind": kind,
         "brightness": brightness,
