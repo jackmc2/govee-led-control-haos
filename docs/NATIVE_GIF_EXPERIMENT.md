@@ -1,52 +1,52 @@
-# H70B3 — envoi GIF natif expérimental (0.5.3)
+# H70B3 — GIF natif autonome : protocole et validation
 
-**Ne pas confondre avec le lecteur GIF existant.**
-Ce fichier documente uniquement l'essai de transfert en une fois, pas une fonctionnalité matériellement confirmée.
+**Statut actuel : implémenté et validé sur un H70B3 réel le 21 novembre 2026.** Ce fichier conserve aussi les détails techniques issus de la phase expérimentale initiale (v0.5.3).
 
-## Fonction visée
+## Résultat validé
 
-LED Studio : charger un **GIF original exactement 20×26** (520 LED, **320 Kio max**), cliquer **« Envoyer GIF natif (test) »**. Le navigateur émet **une seule requête de service** `govee_led_control.upload_native_gif`, pas la boucle `set_frame`. Le transport ferme sa session BLE après upload/activation. Le GIF doit alors être animé de manière autonome, même après fermeture de LED Studio, et laisser Govee Home reprendre le contrôle de façon durable.
+- **Envoi unique d'un GIF natif** au H70B3 à travers le service `govee_led_control.upload_native_gif`.
+- **Lecture autonome du GIF sur le rideau**, sans diffusion image par image par Home Assistant.
+- **Animation maintenue après fermeture** de LED Studio ou du navigateur.
+- **Reprise du contrôle par Govee Home** : choisir un autre effet dans l'application ne déclenche aucun retour forcé au GIF.
+- **Libération de la connexion Bluetooth** après l'envoi.
+
+Ces comportements ont été **validés matériellement par l'utilisateur le 21/11/2026**. Ils concernent l'appareil testé : la compatibilité universelle avec tous les firmwares et tous les fichiers GIF n'a pas été établie.
+
+## Fonctionnement dans les versions stables
+
+LED Studio permet l'import, la création et la modification de GIF dans une matrice **20 × 26 (520 LED)**. LED Player permet de sélectionner une création de la galerie puis de cliquer sur **« Envoyer sur le rideau »**.
+
+Un GIF est encodé en format natif puis transféré en **une opération Bluetooth**. Le rideau prend en charge sa lecture : aucun minuteur d'animation n'est nécessaire côté serveur ou navigateur. Les prévisualisations dans les cartes restent locales et n'envoient rien au rideau.
+
+Le protocole impose notamment la dimension **20 × 26** et une limite de charge GIF native de **320 Kio**. Les fichiers importés peuvent être convertis et reconstruits par les cartes avant transfert ; les limites s'appliquent au contenu effectivement envoyé.
 
 ## Fondement du protocole
 
-Les classes extraites de Govee Home sur un H70B3 confirment :
-- `EffectH70b3Gif.getBytes()` : renvoie **`0x5D` + les octets du GIF original** depuis `GifDecodeV1Info`.
-- Le décodeur `EffectH70b3Gif$parse$2$1` retire deux octets de l'enveloppe d'effet reçue et reconstitue un fichier `diy_effect_gif.gif`.
-- `H70b3GifParse.makeBleMaterialGifController()` préfixe l'argument `graffitiBytes` par `0x5D`, puis `Compose4DefWrite4Multi.c/d((byte) 88, ...)`.
-- `Ble.java` H70B3 expose le service `…1910` et la caractéristique `…2b11`.
-- L'implémentation `Compose4DefWrite4Multi` est absente des APK fournis (uniquement une référence de type). **La compatibilité du format de fragmentation est supposée**, par analogie avec l'encodeur `A4/58` déjà validé pour les images statiques.
+Les analyses de l'application Govee Home réalisées pendant le développement ont montré :
 
-## Implémentation dans la branche feature/ble-connection-release
+- `EffectH70b3Gif.getBytes()` produit un effet commençant par le marqueur **`0x5D`**, suivi des octets du GIF.
+- `H70b3GifParse.makeBleMaterialGifController()` prépare le matériau GIF avant son envoi.
+- L'enveloppe de transfert utilise le protocole **A4/58** déjà utilisé pour les images fixes.
+- Le client `h70b3_ble.py` effectue l'authentification, le transfert, les acquittements, l'activation puis la déconnexion BLE.
 
-- `h70b3_protocol.py` : validation du GIF, `build_native_gif_effect`, séparation du packetizer `build_effect_upload_packets`; l'encodeur statique `0x5F` existant est conservé.
-- `h70b3_ble.py` : méthode `async_send_native_gif` ; authentification E7, chiffrement, transfert `A4/58`, attente d'ACK, commande `ACTIVATE` déjà utilisée pour les PNG statiques, déconnexion en `finally`.
-- `h70b3_controller.py` : suppression des transferts d'image en attente au moment d'un upload natif.
-- `__init__.py`, `const.py`, `services.yaml` : service volontaire `govee_led_control.upload_native_gif` avec charge `gif_base64`.
-- `frontend/govee-led-studio.js` : bouton expérimental distinct du lecteur GIF frame-par-frame, disponible pour un fichier GIF 20×26 original chargé depuis le navigateur. Les éléments de galerie existants contiennent seulement des frames décodées, pas le fichier original.
-- `tests/test_protocol.py` : vérification du préfixe 0x5D, des limites, de l'encapsulation A4/58 et de la non-régression des PNG.
+Les doutes concernant la lecture autonome et la commande d'activation, présents dans les premières notes de la branche expérimentale, ont été **levés par les essais physiques**. Il reste possible que certains GIF ou firmwares rencontrent des limitations non encore caractérisées.
 
-## Contrôle physique restant impératif
+## Éléments du code
 
-1. Déployer **la version 0.5.3 de la branche de développement**, sans fusionner dans `main`. Redémarrer Home Assistant, recharger la carte JS (Ctrl+F5).
-2. Ouvrir LED Studio ; charger le GIF de test H70B3 `20×26`. Ne pas appuyer sur le bouton « Lire » (streaming).
-3. Cliquer **« Envoyer GIF natif (test) »** et observer le résultat. Un statut de transfert « réussi » signifie seulement que **les acquittements BLE** ont été reçus ; il ne démontre PAS que le H70B3 joue le GIF.
-4. Si l'animation est visible : quitter LED Studio et fermer le navigateur ; elle doit **continuer**.
-5. Modifier l'effet dans Govee Home : il doit **rester** sans retour au GIF.
-6. Si échec : relever uniquement le message d'erreur affiché par LED Studio et `last_error` du capteur transport. Ne pas multiplier les tentatives ou supposer que l'ACK valide l'activation native.
+- `h70b3_protocol.py` : validation GIF, préfixe `0x5D`, construction des paquets `A4/58`.
+- `h70b3_ble.py` : session BLE chiffrée, transfert natif et libération BLE.
+- `h70b3_controller.py` : orchestration des opérations de transfert.
+- `__init__.py` / `services.yaml` : service `govee_led_control.upload_native_gif`.
+- `frontend/govee-led-studio.js` et `frontend/govee-led-player.js` : création, sélection, prévisualisation et envoi depuis Home Assistant.
 
-## Limitations / prudence
+## Historique de validation
 
-- **Protocole GIF natif non validé sur matériel** : possibilité que la commande d'activation diffère ou que le firmware attende une autre segmentation/procédure d'enregistrement. Ce code est un **essai contrôlé et opt-in**, pas une réussite annoncée.
-- La boucle GIF existante est conservée comme mode de repli, et demeure arrêtée lors des changements de page pour ne pas empêcher Govee Home de reprendre le contrôle.
-- L'expérience ne doit pas intervenir sur les intégrations H6069 ou les images fixes existantes.
-- Ne pas engager de flash OTA ou d'opérations de firmware dans cette expérience.
+| Étape | Résultat |
+| --- | --- |
+| Protocole identifié et première implémentation (v0.5.3) | Initialement expérimental |
+| Transfert et affichage d'un GIF sur H70B3 | **Validé sur matériel** |
+| Lecture après fermeture du navigateur | **Validée sur matériel** |
+| Changement d'effet depuis Govee Home | **Validé sur matériel** |
+| Publication dans l'intégration stable | **Effective** |
 
-Documentation générale : voir README.md.
-
-## Validation matérielle complète — 21/11/2026
-
-- ✅ Transfert depuis LED Studio 0.5.3 et lecture GIF sur la H70B3 : validé par l'utilisateur.
-- ✅ En quittant la page LED Studio, l'animation continue : validé par l'utilisateur.
-- ✅ En choisissant un autre effet dans Govee Home, le nouvel effet reste actif et LED Studio ne réimpose pas le GIF : validé par l'utilisateur.
-
-**Le GIF natif autonome et la coexistence avec Govee Home sont donc confirmés sur le matériel testé.** Les réserves de début de document correspondent à l'état *avant* ces vérifications. Le support universel de tous les GIF n'est pas démontré.
+Voir le [README](../README.md) et la [documentation Bluetooth actuelle](BLUETOOTH_CONNECTION.md) pour les prérequis (adaptateur local ou proxy ESPHome actif).
