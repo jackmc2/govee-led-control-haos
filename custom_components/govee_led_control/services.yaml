@@ -1,0 +1,219 @@
+set_elements:
+  name: Définir des éléments
+  description: "Modifie plusieurs panneaux ou LED par leur index dans une seule image."
+  fields:
+    config_entry_id:
+      name: Identifiant de configuration
+      description: "Nécessaire uniquement si plusieurs appareils Govee sont configurés."
+      selector:
+        text:
+    elements:
+      name: Éléments
+      description: "Liste d'index et de couleurs (#RRGGBB ou [r,g,b]). H6069 : index des panneaux. H70B3 : index des LED de 0 à 519."
+      required: true
+      example:
+        - index: 5
+          color: "#ff0000"
+      selector:
+        object:
+    replace:
+      name: Remplacer l'image actuelle
+      description: "Éteindre les éléments non mentionnés avant l'envoi."
+      default: false
+      selector:
+        boolean:
+    brightness_percent:
+      name: Luminosité
+      description: "Luminosité globale de 1 à 100 % (facultatif)."
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: slider
+    commit:
+      name: Envoyer immédiatement
+      default: true
+      selector:
+        boolean:
+
+set_pixels:
+  name: Définir les pixels H70B3
+  description: "Modifie plusieurs pixels x/y de la guirlande H70B3 dans une image."
+  fields:
+    config_entry_id:
+      name: Identifiant de configuration
+      selector:
+        text:
+    pixels:
+      name: Pixels
+      description: "Liste de coordonnées x/y à partir de zéro et de leurs couleurs."
+      required: true
+      example:
+        - x: 0
+          y: 0
+          color: "#ff0000"
+        - x: 19
+          y: 25
+          color: [0, 0, 255]
+      selector:
+        object:
+    replace:
+      name: Remplacer l'image actuelle
+      default: false
+      selector:
+        boolean:
+    brightness_percent:
+      name: Luminosité
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: slider
+    commit:
+      name: Envoyer immédiatement
+      default: true
+      selector:
+        boolean:
+
+set_frame:
+  name: Définir une image complète
+  description: "Remplace tous les éléments : panneaux H6069 ou 520 LED H70B3 (ordre ligne puis colonne)."
+  fields:
+    config_entry_id:
+      name: Identifiant de configuration
+      selector:
+        text:
+    colors:
+      name: Couleurs
+      description: "Exactement le nombre de couleurs #RRGGBB ou de valeurs RGB attendu."
+      required: true
+      selector:
+        object:
+    brightness_percent:
+      name: Luminosité
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: slider
+    hold_ble:
+      name: Maintenir temporairement le Bluetooth
+      description: "Activer uniquement pendant la lecture image par image d'un GIF. Laisse la connexion BLE ouverte pendant le flux, au détriment de l'accès Govee Home."
+      default: false
+      selector:
+        boolean:
+    commit:
+      name: Envoyer immédiatement
+      default: true
+      selector:
+        boolean:
+
+apply_level:
+  name: Visualiser une valeur de capteur
+  description: "Convertit une valeur de 0 à 100 en image lumineuse statique."
+  fields:
+    config_entry_id:
+      name: Identifiant de configuration
+      selector:
+        text:
+    level:
+      name: Niveau
+      description: "Valeur du capteur de 0 à 100."
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: slider
+    style:
+      name: Style
+      default: bar
+      selector:
+        select:
+          options:
+            - label: Jauge
+              value: bar
+            - label: Position
+              value: position
+            - label: Impulsion de couleur
+              value: pulse
+    commit:
+      name: Envoyer immédiatement
+      default: true
+      selector:
+        boolean:
+
+clear:
+  name: Éteindre tous les éléments
+  description: "Remplace toutes les couleurs par du noir et envoie l'image si demandé."
+  fields:
+    config_entry_id:
+      name: Identifiant de configuration
+      selector:
+        text:
+    commit:
+      name: Envoyer immédiatement
+      default: true
+      selector:
+        boolean:
+
+commit:
+  name: Envoyer l'image en attente
+  description: "Envoie immédiatement les dernières modifications."
+  fields:
+    config_entry_id:
+      name: Identifiant de configuration
+      selector:
+        text:
+
+show_demo:
+  name: Afficher la démonstration
+  description: "H6069 : panneau 5 rouge sur fond bleu. H70B3 : motif X rouge et bleu."
+  fields:
+    config_entry_id:
+      name: Identifiant de configuration
+      selector:
+        text:
+    commit:
+      name: Envoyer immédiatement
+      default: true
+      selector:
+        boolean:
+
+show_orientation:
+  name: Repères d'orientation H70B3
+  description: "Affiche des repères de couleur aux quatre coins de la H70B3."
+  fields:
+    config_entry_id:
+      name: Identifiant de configuration
+      selector:
+        text:
+    commit:
+      name: Envoyer immédiatement
+      default: true
+      selector:
+        boolean:
+
+release_bluetooth:
+  name: Libérer Bluetooth H70B3
+  description: "Ferme immédiatement la session BLE H70B3 afin de rendre l'accès à Govee Home, sans arrêter HAOS."
+  fields:
+    config_entry_id:
+      name: Identifiant de configuration
+      selector:
+        text:
+
+upload_native_gif:
+  name: Envoyer un GIF natif H70B3 (expérimental)
+  description: "Transmet une seule fois le GIF 20×26 original (marqueur 0x5D), demande son activation, puis libère le Bluetooth. Lecture autonome non encore validée sur matériel."
+  fields:
+    config_entry_id:
+      name: Identifiant de configuration
+      selector:
+        text:
+    gif_base64:
+      name: GIF encodé en Base64
+      description: "Fichier GIF87a/GIF89a exactement 20×26 pixels, 320 Kio maximum. Ne pas utiliser avec des GIF provenant du lecteur streaming sans le fichier original."
+      required: true
+      selector:
+        text:

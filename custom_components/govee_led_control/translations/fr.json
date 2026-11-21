@@ -1,0 +1,70 @@
+{
+  "title": "Govee LED Control — HAOS",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Sélectionner un appareil Govee détecté",
+        "description": "Appareils repérés par le Bluetooth de Home Assistant, y compris les proxys ESPHome. Sélectionnez votre H70B3 : son adresse Bluetooth sera reprise automatiquement.",
+        "data": {
+          "device": "Appareil détecté ou autre mode de configuration"
+        }
+      },
+      "not_found": {
+        "title": "Aucune H70B3 détectée",
+        "description": "Home Assistant ne voit actuellement aucune H70B3 accessible via ses adaptateurs Bluetooth ou ses proxys ESPHome. Vous pouvez actualiser la recherche ou choisir une configuration manuelle.",
+        "data": {
+          "device": "Choix de configuration"
+        }
+      },
+      "h6069": {
+        "title": "Configurer H6069 sur le réseau local",
+        "description": "Le contrôle des panneaux s'effectue par LAN. Activez le contrôle LAN dans Govee Home.",
+        "data": {
+          "host": "Adresse IP de l'appareil",
+          "name": "Nom",
+          "panel_count": "Nombre de panneaux"
+        }
+      },
+      "h70b3": {
+        "title": "Configuration manuelle de la H70B3",
+        "description": "À utiliser uniquement si l'appareil n'est pas détecté. Un adaptateur ou un proxy Bluetooth ESPHome compatible est nécessaire ; aucune image n'est envoyée durant l'installation.",
+        "data": {
+          "address": "Adresse MAC Bluetooth",
+          "name": "Nom"
+        }
+      },
+      "confirm": {
+        "title": "Ajouter {name}",
+        "description": "Utiliser la H70B3 découverte à l'adresse {address} ? Aucune image ne sera envoyée durant l'installation."
+      }
+    },
+    "error": {
+      "invalid_ip": "Adresse IP invalide.",
+      "invalid_address": "Adresse MAC Bluetooth invalide.",
+      "invalid_topology": "Topologie H6069 invalide.",
+      "topology_count_mismatch": "Le nombre de panneaux ne correspond pas à la topologie importée."
+    },
+    "abort": {
+      "already_configured": "Cet appareil Govee est déjà configuré."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options du modèle",
+        "description": "Seul cet appareil sera rechargé. Aucun motif n'est envoyé lors du rechargement.",
+        "data": {
+          "panel_count": "Nombre de panneaux H6069",
+          "topology_pt": "Topologie Shape Recognition (Base64, facultative)",
+          "create_pixel_entities": "Créer 520 entités LED individuelles H70B3",
+          "debounce_ms": "Regrouper les modifications pendant (ms)",
+          "idle_disconnect_seconds": "Déconnexion Bluetooth après inactivité (s)"
+        }
+      }
+    },
+    "error": {
+      "invalid_topology": "Topologie H6069 invalide.",
+      "topology_count_mismatch": "Le nombre de panneaux ne correspond pas à la topologie importée."
+    }
+  }
+}
