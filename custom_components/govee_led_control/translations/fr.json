@@ -10,10 +10,10 @@
         }
       },
       "not_found": {
-        "title": "Aucune H70B3 détectée",
-        "description": "Home Assistant ne voit actuellement aucune H70B3 accessible via ses adaptateurs Bluetooth ou ses proxys ESPHome. Vous pouvez actualiser la recherche ou choisir une configuration manuelle.",
+        "title": "Aucun nouvel appareil H70B3 à ajouter",
+        "description": "Les H70B3 déjà configurés dans Home Assistant ne sont pas proposés à nouveau. Aucun nouveau rideau H70B3 n'est visible actuellement. Vous pouvez actualiser la recherche ou saisir manuellement l'adresse Bluetooth d'un autre rideau.",
         "data": {
-          "device": "Choix de configuration"
+          "device": "Ajout d'un nouveau H70B3"
         }
       },
       "h6069": {
