@@ -72,9 +72,10 @@ class FakeFlow:
         self.hass = object()
         self.selected = None
         self.unique_id = None
+        self.entries = []
 
     def _async_current_entries(self):
-        return []
+        return self.entries
 
     def async_show_form(self, *, step_id, data_schema):
         return {"step_id": step_id, "fields": data_schema}
@@ -107,12 +108,12 @@ class ConfigFlowDiscoveryTests(unittest.TestCase):
         flow.async_step_not_found = types.MethodType(methods["async_step_not_found"], flow)
         return flow
 
-    def test_no_detection_shows_three_nonempty_choices(self):
+    def test_no_detection_shows_only_h70b3_choices(self):
         flow = self.setup_flow([])
         page = asyncio.run(flow.async_step_user())
         self.assertEqual(page["step_id"], "not_found")
         choices = page["fields"]["device"]
-        self.assertEqual(set(choices), {"refresh", "h70b3", "h6069"})
+        self.assertEqual(set(choices), {"refresh", "h70b3"})
         self.assertTrue(all(isinstance(x, str) and x.strip() for x in choices.values()))
         self.assertIn("aucune annonce reçue", choices["refresh"])
 
@@ -121,10 +122,23 @@ class ConfigFlowDiscoveryTests(unittest.TestCase):
         result = asyncio.run(flow.async_step_not_found({"device": "h70b3"}))
         self.assertEqual(result, {"type": "manual_h70b3"})
 
-    def test_h6069_choice_is_not_ignored(self):
-        flow = self.setup_flow([])
-        result = asyncio.run(flow.async_step_not_found({"device": "h6069"}))
-        self.assertEqual(result, {"type": "lan_h6069"})
+    def test_configured_h70b3_is_not_reported_as_undetected(self):
+        item = types.SimpleNamespace(
+            name="Govee_H70B3_4148",
+            address="02:11:22:33:44:55",
+            connectable=True,
+        )
+        flow = self.setup_flow([item])
+        flow.entries = [types.SimpleNamespace(
+            data={"model": "h70b3", "address": "02:11:22:33:44:55"}
+        )]
+        page = asyncio.run(flow.async_step_user())
+        self.assertEqual(page["step_id"], "not_found")
+        choices = page["fields"]["device"]
+        self.assertEqual(set(choices), {"refresh", "h70b3"})
+        self.assertIn("1 H70B3 déjà configuré(s)", choices["refresh"])
+        self.assertIn("aucun nouveau rideau", choices["refresh"])
+        self.assertNotIn("02:11:22:33:44:55", choices)
 
     def test_h70b3_seen_in_haos_but_missing_from_connectable_cache(self):
         item = types.SimpleNamespace(
