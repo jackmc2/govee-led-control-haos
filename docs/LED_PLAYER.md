@@ -62,3 +62,18 @@ lan_ip: 192.168.1.50
 **Installation de cette évolution :** le dossier \`custom_components/govee_led_control\` **complet** version 0.5.6 est nécessaire, suivi d'un **redémarrage de Home Assistant**, car deux nouvelles commandes WebSocket côté serveur sont enregistrées. Remplacer uniquement le JS ne suffit plus. Faire ensuite Ctrl+F5.
 
 **Validation :** la présence du protocole \`turn\` dans l'API LAN Govee est documentée, et les commandes LAN du H70B3 étaient déjà joignables séparément. Ce bouton et son accès HAOS restent à **valider sur le rideau réel**, particulièrement la reprise d'un GIF après réallumage.
+
+## Luminosité mémorisée (0.5.7)
+
+Le **curseur ☀ Luminosité du rideau (1 à 100 %)** est situé sous l'aperçu.
+Sa valeur est enregistrée dans le stockage Home Assistant
+(`/config/.storage/govee_led_control.gallery`) et conservée après
+actualisation, changement de navigateur et redémarrage de Home Assistant.
+
+- Pour une image fixe, la valeur est transmise lors de **Envoyer sur le rideau**.
+- Pour un GIF, la palette des 256 couleurs du GIF natif est ajustée **avant**
+  son unique transfert BLE, sans boucle de diffusion ni perte de lecture autonome.
+- Modifier le curseur actualise l'aperçu **sans envoyer de commande au rideau**.
+  Pour appliquer le nouveau niveau à une animation déjà en cours, il faut
+  renvoyer la création depuis le Player.
+- Le réglage n'altère pas les créations enregistrées dans la galerie.

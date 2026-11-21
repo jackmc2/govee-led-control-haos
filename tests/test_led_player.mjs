@@ -28,6 +28,7 @@ function fixture(item) {
   instance._items = [item];
   instance._selectedId = item.id;
   instance._busy = false;
+  instance._brightness = 100;
   instance.shadowRoot = { getElementById: () => ({ disabled: false, textContent: "" }) };
   instance._renderSelection = () => {};
   instance._statusUpdate = (message, error = false) => {
@@ -54,13 +55,15 @@ const frameB = { colors: Array(520).fill("#334455"), duration: 200 };
     id: "static", name: "Bleu", target: "h70b3",
     kind: "art", brightness: 45, colors,
   });
+  instance._brightness = 72;
   await instance._sendSelected();
   assert.equal(calls.length, 1);
   assert.equal(calls[0].domain, "govee_led_control");
   assert.equal(calls[0].name, "set_frame");
   assert.equal(calls[0].data.config_entry_id, "curtain_entry");
   assert.equal(calls[0].data.colors.length, 520);
-  assert.equal(calls[0].data.brightness_percent, 45);
+  assert.equal(calls[0].data.brightness_percent, 72,
+    "the persistent Player slider overrides the brightness stored in Studio");
   assert.equal(calls[0].data.commit, true);
   assert.equal(instance.testResult.error, false);
 }
@@ -70,6 +73,7 @@ const frameB = { colors: Array(520).fill("#334455"), duration: 200 };
     id: "gif", name: "Meteores", target: "h70b3",
     kind: "animation", brightness: 100, frames: [frameA, frameB],
   });
+  instance._brightness = 50;
   await instance._sendSelected();
   assert.equal(calls.length, 1, "a native GIF is uploaded exactly once");
   assert.equal(calls[0].name, "upload_native_gif");
@@ -80,6 +84,10 @@ const frameB = { colors: Array(520).fill("#334455"), duration: 200 };
   assert.equal(data.readUInt16LE(6), 20);
   assert.equal(data.readUInt16LE(8), 26);
   assert.equal(data[data.length - 1], 0x3b);
+  // GIF89a global RGB332 palette starts at byte 13. Pure red at index 0xe0
+  // must become half-bright, without any additional BLE command.
+  assert.equal(data[13 + 0xe0 * 3], 128);
+  assert.equal(data[13 + 0xe0 * 3 + 1], 0);
   assert.equal(instance.testResult.error, false);
 }
 
@@ -93,6 +101,7 @@ const frameB = { colors: Array(520).fill("#334455"), duration: 200 };
   assert.equal(calls[0].name, "set_frame");
   assert.equal(calls[0].data.config_entry_id, "panels_entry");
   assert.equal(calls[0].data.colors.length, 40);
+  assert.equal(calls[0].data.brightness_percent, 100);
 }
 // The visible action label remains identical regardless of the selected content type.
 for (const item of [
@@ -192,3 +201,44 @@ assert.equal(source.includes("power_entity"), false,
 assert.equal(source.includes('callService(entityId.split'), false);
 
 console.log("LED Player: static H70B3 image, native GIF, H6069 image OK");
+
+// Brightness is shared through HA's .storage WebSocket commands; it must not
+// rely on browser-only localStorage or on editing/saving the artwork itself.
+{
+  const { instance } = fixture({id:"still", name:"Vert", kind:"art", target:"h70b3", colors});
+  let storedBrightness = 38;
+  const requests = [];
+  instance._brightness = 100;
+  instance._brightnessLoaded = false;
+  instance._brightnessLoading = false;
+  instance._brightnessTouched = false;
+  instance._renderBrightness = () => {};
+  instance._drawPreview = () => {};
+  instance._brightnessHint = () => {};
+  instance._hass.callWS = async (req) => {
+    requests.push(req);
+    if (req.type.endsWith("/get")) return {brightness: storedBrightness};
+    storedBrightness = req.brightness;
+    return {brightness: storedBrightness};
+  };
+  await instance._loadBrightness();
+  assert.equal(instance._brightness, 38);
+  assert.equal(instance._brightnessLoaded, true);
+  instance._brightness = 61;
+  await instance._saveBrightness();
+  assert.equal(storedBrightness, 61);
+  assert.equal(requests.at(-1).type, "govee_led_control/player/brightness/set");
+  // Simulate a second browser opening the card: the last persisted value wins.
+  const { instance: anotherPlayer } = fixture({id:"still",kind:"art",target:"h70b3",colors});
+  anotherPlayer._brightnessLoaded = false;
+  anotherPlayer._brightnessLoading = false;
+  anotherPlayer._brightnessTouched = false;
+  anotherPlayer._renderBrightness = () => {};
+  anotherPlayer._drawPreview = () => {};
+  anotherPlayer._brightnessHint = () => {};
+  anotherPlayer._hass.callWS = instance._hass.callWS;
+  await anotherPlayer._loadBrightness();
+  assert.equal(anotherPlayer._brightness, 61);
+  assert.equal(source.includes("localStorage"), false,
+    "HA storage, rather than the current browser, owns the Player brightness");
+}

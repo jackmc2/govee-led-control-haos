@@ -17,20 +17,43 @@ from .gallery_data import MAX_ITEMS, validate_gallery_item
 
 STORAGE_VERSION = 1
 STORAGE_KEY = f"{DOMAIN}.gallery"
+
+
 class ArtworkGallery:
     """Small persistent gallery stored in Home Assistant's .storage directory."""
 
     def __init__(self, hass: HomeAssistant) -> None:
         self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self._items: list[dict[str, Any]] = []
+        self._player_brightness = 100
 
     async def async_load(self) -> None:
         stored = await self._store.async_load() or {}
         items = stored.get("items", [])
         self._items = items if isinstance(items, list) else []
+        value = stored.get("player_brightness", 100)
+        self._player_brightness = value if type(value) is int and 1 <= value <= 100 else 100
 
     def items(self) -> list[dict[str, Any]]:
         return deepcopy(self._items)
+
+    def player_brightness(self) -> int:
+        """Shared Player brightness, persistent across browsers and HA restarts."""
+        return self._player_brightness
+
+    async def async_set_player_brightness(self, brightness: int) -> int:
+        if type(brightness) is not int or not 1 <= brightness <= 100:
+            raise ValueError("Brightness must be between 1 and 100")
+        self._player_brightness = brightness
+        await self._async_store()
+        return self._player_brightness
+
+    async def _async_store(self) -> None:
+        # Keep the artwork and player setting together in the existing HA Store.
+        await self._store.async_save({
+            "items": self._items,
+            "player_brightness": self._player_brightness,
+        })
 
     async def async_save_item(self, raw: object) -> dict[str, Any]:
         item = validate_gallery_item(raw)
@@ -52,7 +75,7 @@ class ArtworkGallery:
             item["created_at"] = now
             item["updated_at"] = now
             self._items.append(item)
-        await self._store.async_save({"items": self._items})
+        await self._async_store()
         return deepcopy(item)
 
     async def async_delete_item(self, item_id: str) -> None:
@@ -60,7 +83,7 @@ class ArtworkGallery:
         if len(remaining) == len(self._items):
             raise ValueError("Artwork was not found")
         self._items = remaining
-        await self._store.async_save({"items": self._items})
+        await self._async_store()
 
 
 def _gallery(hass: HomeAssistant) -> ArtworkGallery:
@@ -119,6 +142,34 @@ async def websocket_gallery_delete(
     connection.send_result(msg["id"])
 
 
+@websocket_api.websocket_command(
+    {vol.Required("type"): f"{DOMAIN}/player/brightness/get"}
+)
+@websocket_api.async_response
+async def websocket_player_brightness_get(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    connection.send_result(msg["id"], {"brightness": _gallery(hass).player_brightness()})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/player/brightness/set",
+        vol.Required("brightness"): vol.All(vol.Coerce(int), vol.Range(min=1, max=100)),
+    }
+)
+@websocket_api.async_response
+async def websocket_player_brightness_set(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    brightness = await _gallery(hass).async_set_player_brightness(msg["brightness"])
+    connection.send_result(msg["id"], {"brightness": brightness})
+
+
 async def async_setup_gallery(hass: HomeAssistant) -> None:
     """Load storage and register gallery websocket commands once."""
     data = hass.data[DOMAIN]
@@ -130,4 +181,6 @@ async def async_setup_gallery(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, websocket_gallery_list)
     websocket_api.async_register_command(hass, websocket_gallery_save)
     websocket_api.async_register_command(hass, websocket_gallery_delete)
+    websocket_api.async_register_command(hass, websocket_player_brightness_get)
+    websocket_api.async_register_command(hass, websocket_player_brightness_set)
     data[DATA_GALLERY_REGISTERED] = True

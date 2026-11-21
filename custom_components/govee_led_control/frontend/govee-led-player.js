@@ -20,7 +20,7 @@ function playerColors(item) {
     : item && item.colors;
 }
 
-function encodePlayerGifFrames(frames) {
+function encodePlayerGifFrames(frames, brightness = 100) {
   if (!frames.length || frames.length > 120) throw new Error("Nombre d'images GIF invalide");
   const bytes = [];
   const put = (...items) => bytes.push(...items);
@@ -28,10 +28,13 @@ function encodePlayerGifFrames(frames) {
   for (const ch of "GIF89a") put(ch.charCodeAt(0));
   word(PLAYER_WIDTH); word(PLAYER_HEIGHT);
   put(0xf7, 0, 0); // Global 256-color RGB332 palette.
+  // The H70B3 GIF protocol has no brightness argument: scale the global
+  // palette before the single native upload (never stream frames over BLE).
+  const intensity = playerClamp(Number(brightness) || 100, 1, 100) / 100;
   for (let i = 0; i < 256; i += 1) {
-    put(Math.round(((i >>> 5) & 7) * 255 / 7),
-      Math.round(((i >>> 2) & 7) * 255 / 7),
-      Math.round((i & 3) * 255 / 3));
+    put(Math.round(((i >>> 5) & 7) * 255 / 7 * intensity),
+      Math.round(((i >>> 2) & 7) * 255 / 7 * intensity),
+      Math.round((i & 3) * 255 / 3 * intensity));
   }
   put(0x21, 0xff, 11);
   for (const ch of "NETSCAPE2.0") put(ch.charCodeAt(0));
@@ -135,6 +138,10 @@ class GoveeLedPlayer extends HTMLElement {
     this._powerOn ??= null;
     this._nextPowerCheck ||= 0;
     this._previewFrame ||= 0;
+    this._brightness ??= 100;
+    this._brightnessLoaded ??= false;
+    this._brightnessLoading ??= false;
+    this._brightnessTouched ??= false;
     this._render();
     if (this.isConnected && this._hass) this._loadGallery();
   }
@@ -143,6 +150,7 @@ class GoveeLedPlayer extends HTMLElement {
     const initial = !this._hass;
     this._hass = value;
     if (initial && this.isConnected) this._loadGallery();
+    if (this.isConnected) void this._loadBrightness();
     this._renderPowerButton();
     if (this.isConnected && (initial || Date.now() >= this._nextPowerCheck)) {
       this._nextPowerCheck = Date.now() + 15000;
@@ -153,6 +161,7 @@ class GoveeLedPlayer extends HTMLElement {
   connectedCallback() {
     if (this._hass) {
       this._loadGallery();
+      void this._loadBrightness();
       void this._refreshPower();
     }
     this._onPageHidden ||= () => {
@@ -199,6 +208,11 @@ class GoveeLedPlayer extends HTMLElement {
       "canvas { display:block; image-rendering:pixelated; object-fit:contain; }",
       "#preview { width:min(100%,210px); height:auto; max-height:260px; box-shadow:0 0 26px rgba(110,92,255,.1); }",
       ".meta-row { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; color:#9ba2b6; font-size:12px; }",
+      ".brightness-control { display:grid; gap:7px; margin-top:16px; padding:12px 14px; border-radius:10px; background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.10); }",
+      ".brightness-head { display:flex; justify-content:space-between; align-items:center; gap:8px; color:#e6e7f5; font-size:13px; font-weight:600; }",
+      ".brightness-head strong { color:#c5b8ff; font-variant-numeric:tabular-nums; font-size:15px; }",
+      ".brightness-control input[type=range] { width:100%; margin:3px 0 0; cursor:pointer; accent-color:#9775ff; }",
+      ".brightness-hint { font-size:11px; color:#96a2bc; } .brightness-hint.error { color:#ff9aaa; }",
       ".action { width:100%; margin-top:15px; padding:13px; min-height:46px; border-radius:10px; font-weight:700; font-size:14px; color:white; background:linear-gradient(110deg,#7857ff,#598dff); }",
       ".action:hover:not(:disabled) { filter:brightness(1.12); }",
       ".hint { margin-top:10px; font-size:11px; color:#96a2bc; line-height:1.55; }",
@@ -225,6 +239,11 @@ class GoveeLedPlayer extends HTMLElement {
       '<div id="selected-desc" class="muted">Images et GIF enregistrés dans LED Studio</div>' +
       '<div class="preview-wrap"><canvas id="preview" width="20" height="26"></canvas></div>' +
       '<div class="meta-row"><span id="info-kind"></span><span id="info-brightness"></span></div>' +
+      '<div class="brightness-control"><div class="brightness-head">' +
+      '<label for="player-brightness">☀ Luminosité du rideau</label>' +
+      '<strong id="brightness-value">' + this._brightness + ' %</strong></div>' +
+      '<input id="player-brightness" type="range" min="1" max="100" step="1" value="' + this._brightness + '">' +
+      '<small class="brightness-hint" id="brightness-hint">Valeur mémorisée dans Home Assistant pour les prochains envois.</small></div>' +
       '<button type="button" class="action" id="play" disabled>Envoyer sur le rideau</button>' +
       '<div id="hint" class="hint">Le GIF continue à jouer après la fermeture de la carte.</div>' +
       '<div class="status" id="status" role="status"></div>' +
@@ -239,10 +258,76 @@ class GoveeLedPlayer extends HTMLElement {
         this._renderItems();
       });
     });
+    const brightnessSlider = this.shadowRoot.getElementById("player-brightness");
+    brightnessSlider.addEventListener("input", () => {
+      this._brightnessTouched = true;
+      this._brightness = playerClamp(Number(brightnessSlider.value), 1, 100);
+      this._renderBrightness();
+      this._drawPreview();
+    });
+    brightnessSlider.addEventListener("change", () => { void this._saveBrightness(); });
     this.shadowRoot.getElementById("play").addEventListener("click", () => this._sendSelected());
     this._renderItems();
     this._statusUpdate(this._status, this._error);
     this._renderPowerButton();
+  }
+
+  _renderBrightness() {
+    const slider = this.shadowRoot?.getElementById("player-brightness");
+    const output = this.shadowRoot?.getElementById("brightness-value");
+    if (slider) slider.value = String(this._brightness);
+    if (output) output.textContent = this._brightness + " %";
+  }
+
+  _brightnessHint(message, error = false) {
+    const hint = this.shadowRoot?.getElementById("brightness-hint");
+    if (!hint) return;
+    hint.textContent = message;
+    hint.classList.toggle("error", error);
+  }
+
+  async _loadBrightness() {
+    if (this._brightnessLoaded || this._brightnessLoading || !this._hass?.callWS) return;
+    this._brightnessLoading = true;
+    try {
+      const result = await this._hass.callWS({ type: "govee_led_control/player/brightness/get" });
+      const value = Number(result.brightness);
+      if (Number.isInteger(value) && value >= 1 && value <= 100 && !this._brightnessTouched) {
+        this._brightness = value;
+        this._renderBrightness();
+        this._drawPreview();
+      }
+      this._brightnessLoaded = true;
+      this._brightnessHint("Valeur mémorisée dans Home Assistant pour les prochains envois.");
+    } catch (error) {
+      this._brightnessHint("Lecture impossible : redémarrez Home Assistant si le paquet vient d'être mis à jour.", true);
+    } finally {
+      this._brightnessLoading = false;
+    }
+  }
+
+  async _saveBrightness() {
+    if (!this._hass?.callWS) {
+      this._brightnessHint("Enregistrement impossible : Home Assistant est indisponible.", true);
+      return;
+    }
+    const brightness = this._brightness;
+    // Serialize successive slider releases so an older network request cannot
+    // overwrite the most recent setting in the shared Home Assistant storage.
+    const previous = this._brightnessSaveQueue || Promise.resolve();
+    const save = previous.catch(() => {}).then(() => this._hass.callWS({
+      type: "govee_led_control/player/brightness/set", brightness,
+    }));
+    this._brightnessSaveQueue = save;
+    try {
+      await save;
+      this._brightnessLoaded = true;
+      if (brightness === this._brightness) {
+        this._brightnessHint("Luminosité " + brightness + " % enregistrée dans Home Assistant.");
+      }
+    } catch (error) {
+      this._brightnessHint("Impossible de mémoriser la luminosité : " + (error?.message || "erreur réseau"), true);
+    }
   }
 
   // Select a real HA light/switch controlling device power. The matrix entity
@@ -427,7 +512,7 @@ class GoveeLedPlayer extends HTMLElement {
     kind.textContent = item.kind === "animation"
       ? (item.frames || []).length + " images"
       : "Image fixe";
-    brightness.textContent = (item.brightness || 100) + " %";
+    brightness.textContent = "Création : " + (item.brightness || 100) + " %";
     button.disabled = this._busy;
     button.textContent = "Envoyer sur le rideau";
     hint.textContent = item.kind === "animation"
@@ -456,7 +541,15 @@ class GoveeLedPlayer extends HTMLElement {
     const canvas = this.shadowRoot.getElementById("preview");
     if (!canvas) return;
     const item = this._selected();
-    this._paintCanvas(canvas, colors, item && item.target);
+    // Preview the light level without changing stored artwork or thumbnails.
+    const factor = playerClamp(Number(this._brightness) || 100, 1, 100) / 100;
+    const previewColors = Array.isArray(colors) ? colors.map((hex) => {
+      if (typeof hex !== "string" || !/^#[0-9a-f]{6}$/i.test(hex)) return hex;
+      const channel = (start) => Math.round(parseInt(hex.slice(start, start + 2), 16) * factor)
+        .toString(16).padStart(2, "0");
+      return "#" + channel(1) + channel(3) + channel(5);
+    }) : colors;
+    this._paintCanvas(canvas, previewColors, item && item.target);
   }
 
   _paintCanvas(canvas, colors, target) {
@@ -518,9 +611,10 @@ class GoveeLedPlayer extends HTMLElement {
     button.textContent = "⏳ Envoi en cours…";
     this._statusUpdate("Envoi de « " + item.name + " »…");
     try {
+      const brightness = playerClamp(Number(this._brightness) || 100, 1, 100);
       if (item.kind === "animation") {
         if (item.target !== "h70b3") throw new Error("Les GIF nécessitent un H70B3.");
-        const data = encodePlayerGifFrames(item.frames);
+        const data = encodePlayerGifFrames(item.frames, brightness);
         let binary = "";
         for (let i = 0; i < data.length; i += 0x4000) {
           binary += String.fromCharCode(...data.subarray(i, i + 0x4000));
@@ -532,7 +626,7 @@ class GoveeLedPlayer extends HTMLElement {
         await this._hass.callService("govee_led_control", "set_frame", {
           config_entry_id: entryId,
           colors: item.colors,
-          brightness_percent: item.brightness || 100,
+          brightness_percent: brightness,
           commit: true,
         });
       }
