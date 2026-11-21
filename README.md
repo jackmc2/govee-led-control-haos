@@ -1,4 +1,4 @@
-![Govee LED Control — HAOS · LED Studio et LED Player](docs/assets/readme-hero.svg)
+# Govee LED Control — HAOS
 
 <p align="center">
   <a href="https://github.com/jackmc2/govee-led-control-haos/releases/latest"><img alt="Dernière version" src="https://img.shields.io/github/v/release/jackmc2/govee-led-control-haos?style=flat-square&label=version&color=7c63ed"></a>
@@ -20,6 +20,14 @@
   <a href="#-documentation">Documentation</a>
 </p>
 
+## 📸 Aperçu réel dans Home Assistant
+
+<p align="center">
+  <img src="docs/assets/govee-dashboard.png" width="1000" alt="Capture réelle du tableau de bord Home Assistant avec LED Studio et LED Player côte à côte, galerie de GIF et aperçu d’un sapin de Noël">
+</p>
+
+*Capture de l'interface réelle sous Home Assistant : LED Studio à gauche, LED Player à droite. Le GIF « Sapin Noël » est sélectionné dans le lecteur. L'éditeur de pixels s'ouvre uniquement lorsqu'une création est importée, créée ou modifiée.*
+
 ---
 
 ## ✨ En bref
@@ -40,31 +48,31 @@
 
 ## 🎨 LED Studio
 
-![Aperçu illustratif de LED Studio : éditeur 20 × 26, palette, GIF et galerie](docs/assets/led-studio-preview.svg)
+<img src="docs/assets/led-studio.png" alt="Capture réelle de LED Studio : zone Importer ou créer et galerie avec GIF Cadeau et Sapin Noël" width="520">
 
-**L'espace de création**, intégré à une carte Lovelace :
+**L'espace de création**, intégré à une carte Lovelace. La capture montre son état normal, éditeur refermé :
 
-- Créez une nouvelle image ou une animation, ou importez un fichier existant.
-- Dessinez sur la matrice **20 × 26**, choisissez vos couleurs et ajustez la luminosité.
-- Pour un GIF, parcourez les images, changez leur durée et lancez la **lecture locale** dans l'éditeur.
-- Enregistrez votre création dans la galerie, où elle restera modifiable.
+- La zone **Importer ou créer** permet de charger un PNG, JPEG, WebP ou GIF, ou de commencer une nouvelle image / animation.
+- La **galerie** liste les créations enregistrées, avec aperçu, bouton **Modifier** et suppression.
+- En ouvrant une création, l'éditeur affiche la matrice **20 × 26**, les outils de dessin, la palette, la luminosité et les images du GIF.
+- Le bouton **▶ Lire** prévisualise localement l'animation, sans transfert Bluetooth.
 
-L'éditeur n'occupe pas l'écran au démarrage : il s'ouvre quand vous importez, créez ou modifiez une création.
+L'éditeur est **masqué au démarrage** : il apparaît uniquement après un import, une création ou un clic sur **Modifier** dans la galerie.
 
 ## ▶️ LED Player
 
-![Aperçu illustratif de LED Player : prévisualisation, envoi au rideau et galerie](docs/assets/led-player-preview.svg)
+<img src="docs/assets/led-player.png" alt="Capture réelle de LED Player : aperçu du GIF Sapin Noël, bouton Envoyer sur le rideau, commande Éteindre et galerie" width="520">
 
-**La carte de lecture**, pensée pour un usage quotidien :
+**La carte de lecture**, pensée pour un usage quotidien. La capture montre une animation **« Sapin Noël »** sélectionnée :
 
-- Parcourez la galerie avec les filtres **Tout / Images / GIF**.
-- Prévisualisez une création et cliquez sur **« Envoyer sur le rideau »**.
-- Retrouvez votre galerie en **deux colonnes, sous la prévisualisation**.
-- Utilisez le bouton **Marche / Arrêt** via le réseau local.
+- Le bouton **⏻ Éteindre** en haut à droite reflète l'état de la guirlande et commande son alimentation via le LAN.
+- Les filtres **Tout / Images / GIF** et **Actualiser** partagent la même ligne.
+- L'aperçu central affiche la création sélectionnée, le nombre d'images et la luminosité, au-dessus du bouton **Envoyer sur le rideau**.
+- La galerie est organisée en **deux colonnes sous la prévisualisation** : les vignettes représentent les créations réellement enregistrées.
 
 Pour les GIF natifs H70B3, le fichier est transféré en une opération Bluetooth : **le rideau poursuit la lecture après fermeture de la carte ou du navigateur**. L'application Govee Home peut reprendre le contrôle et changer l'effet.
 
-<sub>Les deux visuels ci-dessus sont des **illustrations de l'interface**, pas des captures d'écran du matériel. Ils représentent les commandes présentes dans les cartes.</sub>
+<sub>Captures réelles de l’interface Home Assistant. Les images et les GIF présentés sont des exemples de créations enregistrées dans la galerie.</sub>
 
 ## 🚀 Installation
 
