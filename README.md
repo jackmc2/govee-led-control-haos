@@ -1,29 +1,97 @@
-# Govee LED Control — HAOS
+![Govee LED Control — HAOS · LED Studio et LED Player](docs/assets/readme-hero.svg)
 
-Intégration Home Assistant pour les éclairages Govee, avec priorité au rideau **H70B3 Curtain Lights 2** : matrice **20 × 26, soit 520 LED**.
+<p align="center">
+  <a href="https://github.com/jackmc2/govee-led-control-haos/releases/latest"><img alt="Dernière version" src="https://img.shields.io/github/v/release/jackmc2/govee-led-control-haos?style=flat-square&label=version&color=7c63ed"></a>
+  <a href="https://github.com/jackmc2/govee-led-control-haos/actions/workflows/validate.yml"><img alt="Tests et validation" src="https://github.com/jackmc2/govee-led-control-haos/actions/workflows/validate.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="Licence MIT" src="https://img.shields.io/badge/licence-MIT-3fbfbc?style=flat-square"></a>
+  <a href="https://www.home-assistant.io/"><img alt="Home Assistant" src="https://img.shields.io/badge/Home%20Assistant-2026.11%2B-41bdf5?style=flat-square"></a>
+</p>
 
-**Dépôt de référence :** [jackmc2/govee-led-control-haos](https://github.com/jackmc2/govee-led-control-haos).  
-**Branche stable :** `main`.  
-**Version de l'intégration :** 0.5.6.
+<p align="center">
+  <strong>Un atelier de création et une galerie pour votre rideau LED Govee H70B3.</strong><br>
+  Créez vos images, animez vos GIF, puis envoyez-les sur le rideau depuis Home Assistant — en local.
+</p>
 
-## Fonctionnalités
+<p align="center">
+  <a href="#-installation">Installation</a> ·
+  <a href="#-led-studio">LED Studio</a> ·
+  <a href="#-led-player">LED Player</a> ·
+  <a href="#-configuration-des-cartes">Cartes Lovelace</a> ·
+  <a href="#-documentation">Documentation</a>
+</p>
 
-| Fonction | État | Mode |
-| --- | --- | --- |
-| Création et modification d'images 20 × 26 | Opérationnel | LED Studio |
-| Import PNG, JPEG, WebP, BMP et GIF | Implémenté | Éditeur commun |
-| Édition GIF image par image | Implémenté | Chronologie et dessin des pixels |
-| Galerie enregistrée dans Home Assistant | Opérationnel | LED Studio + LED Player |
-| Envoi d'une image fixe H70B3 | Validé sur matériel | Transfert BLE ponctuel |
-| Envoi d'un GIF H70B3 | **Validé sur matériel** | Transfert GIF natif, lecture autonome |
-| Lecture du GIF après fermeture de la page | **Validé sur matériel** | Pas de boucle de streaming HAOS |
-| Changement d'effet depuis Govee Home | **Validé sur matériel** | Aucun retour imposé au GIF |
-| Marche/arrêt H70B3 direct par le LAN | **Validé sur matériel** | Commandes UDP 4003 |
-| Modules H6069 | Compatibilité maintenue | Backend dédié ; pas d'onglet H6069 dans LED Studio |
+---
 
-Les commandes usuelles en LAN ne nécessitent pas de connexion au cloud ni d'intégration Govee supplémentaire. Le Bluetooth est utilisé seulement pour les transferts d'images et d'animations nécessitant le protocole BLE.
+## ✨ En bref
 
-## Deux cartes Home Assistant
+| **20 × 26** | **520 LED** | **Bluetooth + LAN** | **GIF autonomes** |
+| :---: | :---: | :---: | :---: |
+| Matrice du H70B3 | Contrôle pixel par pixel | Transfert BLE, marche/arrêt LAN | Le rideau continue de jouer sans streaming HA |
+
+- 🎨 **Créer** une image ou un GIF directement depuis le tableau de bord Home Assistant.
+- 🖼️ **Importer** des fichiers PNG, JPEG, WebP, BMP ou GIF et les adapter à la matrice.
+- 🧩 **Modifier** les pixels, les couleurs et les images d'une animation dans un éditeur commun.
+- 📁 **Enregistrer** et retrouver les créations dans une galerie persistante Home Assistant.
+- ▶️ **Prévisualiser** les GIF dans le navigateur avant de les envoyer.
+- 📡 **Transférer** une image ou un GIF natif en Bluetooth, puis libérer la connexion.
+- ⏻ **Allumer ou éteindre** le H70B3 directement en LAN, sans service cloud supplémentaire.
+
+> **Matériel :** le H70B3 est le modèle principal, avec transferts d'images et de GIF validés sur l'appareil. Le code des panneaux **H6069** reste présent pour sa compatibilité LAN ; l'éditeur graphique illustré ici est dédié au H70B3.
+
+## 🎨 LED Studio
+
+![Aperçu illustratif de LED Studio : éditeur 20 × 26, palette, GIF et galerie](docs/assets/led-studio-preview.svg)
+
+**L'espace de création**, intégré à une carte Lovelace :
+
+- Créez une nouvelle image ou une animation, ou importez un fichier existant.
+- Dessinez sur la matrice **20 × 26**, choisissez vos couleurs et ajustez la luminosité.
+- Pour un GIF, parcourez les images, changez leur durée et lancez la **lecture locale** dans l'éditeur.
+- Enregistrez votre création dans la galerie, où elle restera modifiable.
+
+L'éditeur n'occupe pas l'écran au démarrage : il s'ouvre quand vous importez, créez ou modifiez une création.
+
+## ▶️ LED Player
+
+![Aperçu illustratif de LED Player : prévisualisation, envoi au rideau et galerie](docs/assets/led-player-preview.svg)
+
+**La carte de lecture**, pensée pour un usage quotidien :
+
+- Parcourez la galerie avec les filtres **Tout / Images / GIF**.
+- Prévisualisez une création et cliquez sur **« Envoyer sur le rideau »**.
+- Retrouvez votre galerie en **deux colonnes, sous la prévisualisation**.
+- Utilisez le bouton **Marche / Arrêt** via le réseau local.
+
+Pour les GIF natifs H70B3, le fichier est transféré en une opération Bluetooth : **le rideau poursuit la lecture après fermeture de la carte ou du navigateur**. L'application Govee Home peut reprendre le contrôle et changer l'effet.
+
+<sub>Les deux visuels ci-dessus sont des **illustrations de l'interface**, pas des captures d'écran du matériel. Ils représentent les commandes présentes dans les cartes.</sub>
+
+## 🚀 Installation
+
+### Home Assistant Marketplace (recommandé)
+
+L'intégration est disponible depuis le **[dépôt public GitHub](https://github.com/jackmc2/govee-led-control-haos)** et sa [dernière release](https://github.com/jackmc2/govee-led-control-haos/releases/latest).
+
+1. Dans **Home Assistant 2026.11 ou version ultérieure**, ouvrez **Paramètres → Marketplace → Ajouter depuis un lien**.
+2. Collez l'adresse du dépôt :
+
+   ```text
+   https://github.com/jackmc2/govee-led-control-haos
+   ```
+
+3. Sélectionnez le type **Intégration**, installez la version proposée et **redémarrez Home Assistant**.
+4. Dans **Paramètres → Appareils et services → Ajouter une intégration**, recherchez **Govee LED Control — HAOS** et configurez votre appareil si ce n'est pas déjà fait.
+5. Ajoutez ensuite les cartes LED Studio et LED Player à votre tableau de bord.
+
+**Les deux cartes frontend sont livrées dans l'intégration** : aucun dépôt de cartes supplémentaire n'est nécessaire.
+
+> **Migration depuis un ancien fork :** si le Marketplace indique que le dossier `govee_led_control` appartient déjà à un autre dépôt, **n'installez pas par-dessus et ne supprimez pas votre appareil depuis Appareils et services**. Sauvegardez Home Assistant et vérifiez d'abord la propriété de l'installation dans Marketplace. La configuration de l'appareil et la galerie ne doivent pas être effacées.
+
+### Installation manuelle
+
+Copiez `custom_components/govee_led_control/` vers `/config/custom_components/govee_led_control/`, puis redémarrez Home Assistant. L'installation depuis le Marketplace est préférable pour recevoir les mises à jour.
+
+## 🧱 Configuration des cartes
 
 ### LED Studio
 
@@ -32,9 +100,7 @@ type: custom:govee-led-studio
 h70b3_transport_entity: sensor.h70b3_transport
 ```
 
-L'éditeur permet de créer et d'importer une image ou un GIF, de modifier les pixels de la matrice, de sélectionner les images d'un GIF et de définir leur durée, puis d'enregistrer le résultat dans la galerie de Home Assistant.
-
-La galerie est triée par ordre alphabétique, avec de véritables aperçus d'images et de GIF.
+Adaptez l'identifiant de l'entité de transport à votre installation si nécessaire.
 
 ### LED Player
 
@@ -43,11 +109,7 @@ type: custom:govee-led-player
 title: LED Player
 ```
 
-Le lecteur propose un aperçu agrandi, un bouton unique **« Envoyer sur le rideau »** pour les images ou GIF, une galerie à deux colonnes située sous le prévisualisateur, et un bouton Marche/Arrêt direct LAN.
-
-La ligne des filtres Tout / Images / GIF contient également le bouton **Actualiser**, à droite.
-
-Si le rideau n'est pas découvert automatiquement sur le LAN, la configuration peut préciser l'IP locale :
+Si le H70B3 n'est pas découvert automatiquement sur votre réseau, vous pouvez préciser son **adresse IP locale** :
 
 ```yaml
 type: custom:govee-led-player
@@ -55,61 +117,42 @@ title: LED Player
 lan_ip: 192.168.1.50
 ```
 
-Cette IP est un exemple de configuration locale : elle doit être adaptée au réseau utilisé.
+`192.168.1.50` est une **adresse d'exemple**. Elle ne correspond pas à un appareil réel imposé par le projet.
 
-## Installation depuis le Marketplace
+Après une mise à jour des fichiers JavaScript, un rechargement forcé du navigateur (`Ctrl + F5`) peut être nécessaire.
 
-L'intégration est **préparée pour une publication** dans le Marketplace natif de Home Assistant 2026.11 et versions ultérieures. **Tant que le dépôt reste privé, cette procédure n'est pas encore utilisable.**
-
-Une fois le dépôt public et la version 0.5.6 publiée :
-
-<!-- ha-marketplace:exclude-start -->
-
-1. Ouvrir **Paramètres → Marketplace → Ajouter depuis un lien**.
-2. Renseigner `https://github.com/jackmc2/govee-led-control-haos` et choisir **Intégration** si le type n'est pas reconnu.
-3. Installer la version proposée, redémarrer Home Assistant, puis configurer le H70B3 dans **Paramètres → Appareils et services**.
-4. Ajouter les cartes `custom:govee-led-studio` et `custom:govee-led-player` depuis le tableau de bord.
-
-<!-- ha-marketplace:exclude-end -->
-
-**LED Studio et LED Player sont inclus dans le dépôt de l'intégration** : aucun autre téléchargement ou dépôt Marketplace n'est nécessaire.
-
-
-## Installation manuelle sur Home Assistant OS
-
-1. Récupérer le dossier `custom_components/govee_led_control/` depuis la version/branche choisie.
-2. Le copier vers `/config/custom_components/govee_led_control/`.
-3. Redémarrer Home Assistant après une première installation ou une modification des fichiers Python.
-4. Ajouter les cartes personnalisées dans le dashboard.
-5. Recharger le navigateur avec `Ctrl + F5`.
-
-Pour une modification ne concernant **que le frontend**, remplacer le fichier `.js` concerné et effectuer `Ctrl + F5` ; le redémarrage Home Assistant n'est pas requis.
-
-## Architecture
+## 🔌 Fonctionnement
 
 ```text
-Home Assistant OS
- ├─ LED Studio (édition et sauvegarde)
- ├─ LED Player (prévisualisation et lecture)
- ├─ Galerie Home Assistant
- └─ Intégration govee_led_control
-     ├─ H70B3 BLE : images et GIF natifs
-     ├─ H70B3 LAN : marche/arrêt et état
-     └─ Adaptateurs H6069 : compatibilité
+                 Home Assistant OS
+                         │
+               Govee LED Control
+                  /           \
+           LED Studio       LED Player
+         Création/édition   Galerie/lecture
+                  \           /
+                   Galerie locale
+                         │
+                 ┌───────┴──────┐
+                 │              │
+             Bluetooth         LAN
+          Images / GIF      Marche / arrêt
+                 │              │
+                 └───────┬──────┘
+                         │
+                 Govee H70B3
+                   20 × 26 LED
 ```
 
-Code principal :
+Le H70B3 doit être accessible via un **adaptateur Bluetooth Home Assistant** ou un **proxy Bluetooth ESPHome** capable d'établir une connexion. La configuration manuelle accepte l'adresse **MAC Bluetooth**, différente de l'IP Wi-Fi.
 
-- `frontend/govee-led-studio.js` et `frontend/govee-led-player.js` : les deux cartes.
-- `gallery.py`, `gallery_data.py` : stockage des créations.
-- `h70b3_ble.py`, `h70b3_protocol.py` et `h70b3_controller.py` : transferts BLE authentifiés.
-- `h70b3_lan_power.py` : découverte, lecture d'état et marche/arrêt directs.
-- `__init__.py` : services et commandes WebSocket HAOS.
+Le transfert Bluetooth des images et des GIF est ponctuel ; la commande Marche / Arrêt utilise le réseau local. Les usages décrits ne nécessitent pas le cloud Govee.
 
-## Vérifications
+## 🧪 Validation
+
+Les [GitHub Actions](https://github.com/jackmc2/govee-led-control-haos/actions/workflows/validate.yml) exécutent les vérifications **HACS**, **Hassfest** et les tests de protocole et d'interface.
 
 ```bash
-python -m compileall -q custom_components/govee_led_control
 python -m unittest discover -s tests -v
 node --check custom_components/govee_led_control/frontend/govee-led-studio.js
 node --check custom_components/govee_led_control/frontend/govee-led-player.js
@@ -117,15 +160,14 @@ node tests/test_studio_editor.mjs
 node tests/test_led_player.mjs
 ```
 
-Les workflows de validation sont dans `.github/workflows/`. Les tests automatisés ne remplacent pas une vérification sur l'appareil réel.
+## 📚 Documentation
 
-## Documentation
+- [LED Player : commandes, galerie et contrôle LAN](docs/LED_PLAYER.md)
+- [Connexion Bluetooth et diagnostic H70B3](docs/BLUETOOTH_CONNECTION.md)
+- [Transfert GIF natif H70B3](docs/NATIVE_GIF_EXPERIMENT.md)
+- [Entités et identifiants Home Assistant](docs/ENTITY_IDS.md)
+- [Versions publiées](https://github.com/jackmc2/govee-led-control-haos/releases)
 
-- [docs/LED_PLAYER.md](docs/LED_PLAYER.md) — galerie et commande LAN.
-- [docs/NATIVE_GIF_EXPERIMENT.md](docs/NATIVE_GIF_EXPERIMENT.md) — transfert GIF natif.
+## 🤝 Licence
 
-## Licence et responsabilité
-
-Projet non officiel, non affilié à Govee ou Home Assistant. Les droits et notices de copyright applicables sont définis dans le fichier [LICENSE](LICENSE) (MIT).
-
-Ne jamais publier les jetons GitHub, secrets, comptes, clés Bluetooth, adresses privées ou traces réseau contenant des données sensibles.
+Projet communautaire **non officiel**, sans affiliation avec Govee ou Home Assistant. Distribué selon les termes de la [licence MIT](LICENSE), avec conservation des mentions de copyright applicables.
