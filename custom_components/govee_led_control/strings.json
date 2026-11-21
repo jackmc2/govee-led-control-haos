@@ -31,10 +31,10 @@
         "description": "Use discovered H70B3 at {address} through Bluetooth or an active proxy? No image is sent during setup."
       },
       "not_found": {
-        "title": "No H70B3 detected",
-        "description": "Home Assistant has not detected a connectable H70B3 through its Bluetooth adapters or ESPHome proxies. You can refresh discovery, enter a known MAC address manually, or configure H6069 over LAN.",
+        "title": "No new H70B3 device to add",
+        "description": "H70B3 devices already configured in Home Assistant are not offered again. No additional H70B3 curtain is currently visible. Refresh discovery or manually enter the Bluetooth address of another curtain.",
         "data": {
-          "device": "Setup choice"
+          "device": "Add a new H70B3"
         }
       }
     },
