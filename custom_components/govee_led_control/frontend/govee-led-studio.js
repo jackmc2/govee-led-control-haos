@@ -1042,7 +1042,7 @@ class GoveeLedStudio extends HTMLElement {
     if (rawCategory.length > 40) {
       return this._setStatus("La catégorie ne doit pas dépasser 40 caractères.", true);
     }
-    const existingCategory = this._galleryItems
+    const existingCategory = (this._galleryItems || [])
       .map((entry) => typeof entry.category === "string" ? entry.category.trim() : "")
       .find((value) => value && value.toLocaleLowerCase("fr") === rawCategory.toLocaleLowerCase("fr"));
     const category = existingCategory || rawCategory;
