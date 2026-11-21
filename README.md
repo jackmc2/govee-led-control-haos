@@ -13,6 +13,7 @@
 </p>
 
 <p align="center">
+  <a href="#-prérequis--lan-et-bluetooth">Prérequis LAN / Bluetooth</a> ·
   <a href="#-installation">Installation</a> ·
   <a href="#-led-studio">LED Studio</a> ·
   <a href="#-led-player">LED Player</a> ·
@@ -73,6 +74,46 @@ L'éditeur est **masqué au démarrage** : il apparaît uniquement après un imp
 Pour les GIF natifs H70B3, le fichier est transféré en une opération Bluetooth : **le rideau poursuit la lecture après fermeture de la carte ou du navigateur**. L'application Govee Home peut reprendre le contrôle et changer l'effet.
 
 <sub>Captures réelles de l’interface Home Assistant. Les images et les GIF présentés sont des exemples de créations enregistrées dans la galerie.</sub>
+
+## 🔧 Prérequis : LAN et Bluetooth
+
+Pour piloter le **Govee H70B3**, Home Assistant utilise **deux connexions locales différentes**. Vérifiez leur configuration **avant** d'installer les cartes ou d'envoyer vos créations.
+
+| Connexion | À quoi sert-elle ? | Configuration nécessaire |
+| --- | --- | --- |
+| **LAN / Wi-Fi** | Lire l'état du rideau et l'**allumer / l'éteindre** depuis LED Player | Activer **Contrôle LAN (LAN Control)** dans l'application **Govee Home**. Le H70B3 et Home Assistant doivent être joignables sur le réseau local. |
+| **Bluetooth (BLE)** | Transférer une **image 20 × 26** ou un **GIF natif** sur le H70B3 | Disposer d'un **adaptateur Bluetooth connectable reconnu par Home Assistant** **ou** d'un **proxy Bluetooth ESPHome actif** à portée du rideau. |
+
+### 1. Activer le contrôle LAN dans Govee Home
+
+1. Ouvrez l'application mobile **Govee Home** et sélectionnez votre **H70B3**.
+2. Ouvrez les **paramètres de l'appareil** (icône ⚙️) et activez l'option **Contrôle LAN / LAN Control** si elle est proposée.
+3. Vérifiez que le rideau est connecté au **Wi-Fi local** et que Home Assistant peut communiquer avec lui. La découverte automatique utilise le trafic UDP local ; évitez de bloquer les échanges entre ces appareils.
+4. Si LED Player n'arrive pas à trouver le rideau, renseignez son IP locale avec l'option `lan_ip` dans la [configuration de la carte](#led-player-1).
+
+> Le **contrôle LAN n'est utilisé que pour les commandes locales du Player**, notamment Marche / Arrêt. **L'activer ne remplace pas le Bluetooth** nécessaire aux transferts d'images et de GIF.
+
+### 2. Prévoir une connexion Bluetooth pour les images et GIF
+
+Le H70B3 doit être accessible en **Bluetooth connectable (GATT)** depuis Home Assistant. Deux solutions sont possibles :
+
+- **Adaptateur Bluetooth local** : un adaptateur compatible, exposé à Home Assistant et suffisamment proche du rideau.
+- **Proxy Bluetooth ESPHome** : un ESP32 avec le composant Bluetooth Proxy, connecté au même Home Assistant, placé à portée du H70B3. C'est généralement plus pratique quand HAOS tourne sur un serveur éloigné du rideau.
+
+Exemple de configuration minimale **ESPHome** sur un ESP32 compatible :
+
+```yaml
+esp32_ble_tracker:
+
+bluetooth_proxy:
+  active: true
+```
+
+Intégrez ensuite cet appareil ESPHome à Home Assistant, puis vérifiez que son scanner Bluetooth est opérationnel. Consultez la [documentation officielle ESPHome Bluetooth Proxy](https://esphome.io/components/bluetooth_proxy/) pour la configuration complète de l'ESP32.
+
+> **Un proxy ESPHome n'est pas obligatoire** si Home Assistant dispose déjà d'un adaptateur Bluetooth connectable qui atteint le H70B3. À l'inverse, le Wi-Fi et le contrôle LAN seuls ne permettent **pas** d'envoyer les images ou les GIF.
+
+**En résumé : LAN activé dans Govee Home pour Marche / Arrêt ; Bluetooth local ou proxy ESPHome actif pour les transferts 520 LED et GIF.**
 
 ## 🚀 Installation
 
