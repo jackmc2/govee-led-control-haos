@@ -152,7 +152,7 @@ class GoveeLedStudio extends HTMLElement {
     this._gifEraser ||= false;
     this._gifSelectMode ??= false;
     this._gifSelection ||= null;
-    this._gifSelectionAnchor ||= null;
+    this._gifSelectionAnchor ??= null;
     this._gifUndo ||= [];
     this._gifEdited ||= false;
     this._editingGalleryId ||= null;
@@ -509,6 +509,133 @@ class GoveeLedStudio extends HTMLElement {
     const col = Math.floor((x - bounds.left) / bounds.width * H70_WIDTH);
     const row = Math.floor((y - bounds.top) / bounds.height * H70_HEIGHT);
     return row * H70_WIDTH + col;
+  }
+
+  // Select a rectangle on the native pixel grid; this is an editor overlay
+  // only and never modifies the stored image or GIF frame.
+  _gifPixelAtClamped(x, y) {
+    const bounds = this.shadowRoot?.querySelector("#h70-grid")?.getBoundingClientRect();
+    if (!bounds?.width || !bounds?.height) return null;
+    const col = clamp(Math.floor((x - bounds.left) / bounds.width * H70_WIDTH), 0, H70_WIDTH - 1);
+    const row = clamp(Math.floor((y - bounds.top) / bounds.height * H70_HEIGHT), 0, H70_HEIGHT - 1);
+    return row * H70_WIDTH + col;
+  }
+
+  _setGifAreaSelection(first, last) {
+    if (!this._gifEditing || !this._gifSelectMode ||
+        !Number.isInteger(first) || !Number.isInteger(last) ||
+        first < 0 || first >= H70_PIXELS || last < 0 || last >= H70_PIXELS) return;
+    const firstX = first % H70_WIDTH;
+    const firstY = Math.floor(first / H70_WIDTH);
+    const lastX = last % H70_WIDTH;
+    const lastY = Math.floor(last / H70_WIDTH);
+    this._gifSelection = {
+      left: Math.min(firstX, lastX), right: Math.max(firstX, lastX),
+      top: Math.min(firstY, lastY), bottom: Math.max(firstY, lastY),
+    };
+    this._updateGifAreaOverlay();
+    this._updateGifAreaControls();
+  }
+
+  _updateGifAreaOverlay() {
+    const grid = this.shadowRoot?.querySelector("#h70-grid");
+    if (!grid) return;
+    grid.classList?.toggle("selecting-area", !!this._gifSelectMode);
+    const selection = this._gifSelectMode ? this._gifSelection : null;
+    if (grid.children?.length !== H70_PIXELS) return;
+    for (let i = 0; i < H70_PIXELS; i += 1) {
+      const x = i % H70_WIDTH;
+      const y = Math.floor(i / H70_WIDTH);
+      grid.children[i].classList.toggle("pixel-selected", !!selection &&
+        x >= selection.left && x <= selection.right &&
+        y >= selection.top && y <= selection.bottom);
+    }
+  }
+
+  _updateGifAreaControls() {
+    const root = this.shadowRoot;
+    if (!root) return;
+    const enabled = !!this._gifEditing && !!this._gifSelectMode;
+    const selection = enabled ? this._gifSelection : null;
+    const toggle = root.querySelector("#gif-select-area");
+    if (toggle) {
+      toggle.disabled = !this._gifEditing;
+      toggle.classList?.toggle("active", enabled);
+      toggle.setAttribute?.("aria-pressed", String(enabled));
+      toggle.textContent = enabled ? "▧ Quitter la sélection" : "▧ Sélectionner une zone";
+    }
+    const help = root.querySelector("#gif-selection-hint");
+    if (help) help.hidden = !enabled;
+    const controls = root.querySelector("#gif-area-direction");
+    if (controls) controls.hidden = !enabled;
+    const clear = root.querySelector("#gif-selection-clear");
+    if (clear) clear.hidden = !selection;
+    for (const [id, permitted] of [
+      ["#gif-area-left", !!selection && selection.left > 0],
+      ["#gif-area-right", !!selection && selection.right < H70_WIDTH - 1],
+      ["#gif-area-up", !!selection && selection.top > 0],
+      ["#gif-area-down", !!selection && selection.bottom < H70_HEIGHT - 1],
+    ]) {
+      const button = root.querySelector(id);
+      if (button) button.disabled = !permitted;
+    }
+  }
+
+  _clearGifAreaSelection() {
+    this._gifSelection = null;
+    this._gifSelectionAnchor = null;
+    this._updateGifAreaOverlay();
+    this._updateGifAreaControls();
+  }
+
+  _toggleGifAreaSelection() {
+    if (!this._gifEditing || !this._gifFrames[this._gifFrameIndex]) return;
+    this._stopGif();
+    this._gifSelectMode = !this._gifSelectMode;
+    this._clearGifAreaSelection();
+  }
+
+  // Cut-and-move the selected rectangle, including its black pixels, by
+  // exactly one LED. New areas are black; destination pixels are overwritten.
+  // Clipping/wrapping is forbidden, and only the active GIF frame is edited.
+  _moveGifArea(dx, dy) {
+    const area = this._gifSelection;
+    const frame = this._gifFrames?.[this._gifFrameIndex];
+    if (!this._gifEditing || !this._gifSelectMode || !area || !frame ||
+        !Number.isInteger(dx) || !Number.isInteger(dy) ||
+        Math.abs(dx) + Math.abs(dy) !== 1 ||
+        area.left + dx < 0 || area.right + dx >= H70_WIDTH ||
+        area.top + dy < 0 || area.bottom + dy >= H70_HEIGHT ||
+        !Array.isArray(frame.colors) || frame.colors.length !== H70_PIXELS) return;
+
+    const updated = [...frame.colors];
+    for (let y = area.top; y <= area.bottom; y += 1) {
+      for (let x = area.left; x <= area.right; x += 1) {
+        updated[y * H70_WIDTH + x] = BLACK;
+      }
+    }
+    for (let y = area.top; y <= area.bottom; y += 1) {
+      for (let x = area.left; x <= area.right; x += 1) {
+        updated[(y + dy) * H70_WIDTH + x + dx] = frame.colors[y * H70_WIDTH + x];
+      }
+    }
+    const changed = updated.some((color, i) => color !== frame.colors[i]);
+    if (changed) {
+      this._stopGif();
+      this._pushGifUndo();
+      frame.colors = updated;
+    }
+    this._gifSelection = {
+      left: area.left + dx, right: area.right + dx,
+      top: area.top + dy, bottom: area.bottom + dy,
+    };
+    if (changed) {
+      this._markGifEdited();
+      this._showGifFrame();
+    } else {
+      this._updateGifAreaOverlay();
+      this._updateGifAreaControls();
+    }
   }
 
   _pushGifUndo() {
@@ -1511,6 +1638,16 @@ class GoveeLedStudio extends HTMLElement {
       .gif-pixel-shift span { font-size:12px; color:#bdc1d4; }
       .gif-shift-buttons { display:flex; gap:7px; }
       .gif-shift-buttons button { min-width:43px; background:rgba(120,87,255,.19); border:1px solid rgba(148,122,255,.34); font-size:17px; }
+      .gif-area-tools { display:grid; gap:9px; min-width:0; }
+      .gif-area-tools > button { width:100%; text-align:center; padding:9px 11px; border:1px solid rgba(148,122,255,.36); font-size:12px; }
+      .gif-area-tools > button.active { background:rgba(120,87,255,.40); border-color:#b5a3ff; font-weight:700; }
+      .gif-selection-hint { color:#b9c2d4; font-size:11px; }
+      .gif-area-direction { display:grid; gap:8px; }
+      .gif-area-direction > span { color:#b8bed0; font-size:12px; }
+      .gif-area-pad { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; }
+      .gif-area-pad button { padding:7px 10px; font-size:19px; min-height:39px; background:rgba(120,87,255,.18); border:1px solid rgba(148,122,255,.34); }
+      #gif-selection-clear { justify-self:start; padding:6px 10px; font-size:11px; color:#d9d4f3; }
+      .gif-area-direction[hidden],#gif-selection-hint[hidden],#gif-selection-clear[hidden] { display:none !important; }
       .gif-retouch-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
       .gif-retouch-actions button { min-width:0; }
       .gif-retouch-actions #gif-clear-frame,.gif-retouch-actions #gif-clear-still { color:#ffb1bb; }
@@ -1532,6 +1669,9 @@ class GoveeLedStudio extends HTMLElement {
       /* A distinct graphite background draws consistent grid lines between all 520 LEDs. */
       .matrix { display:grid; grid-template-columns:repeat(20,1fr); gap:3px; aspect-ratio:20/26; padding:2px; box-sizing:border-box; border-radius:6px; background:#3b4252; }
       .matrix.gif-drawing { touch-action:none; } .matrix button { min-width:0; padding:0; border-radius:2px; background:var(--pixel); box-shadow:0 0 2px color-mix(in srgb, var(--pixel) 20%, transparent); }
+      .matrix.selecting-area { cursor:crosshair; touch-action:none; }
+      .matrix button.pixel-selected { background:linear-gradient(rgba(235,55,73,.18),rgba(235,55,73,.18)),var(--pixel); box-shadow:inset 0 0 0 2px rgba(255,105,122,.86); }
+
       .side-panel,.gif-panel { padding:18px; border:1px solid rgba(255,255,255,.08); border-radius:15px; background:rgba(255,255,255,.035); }
       .button-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:15px; } .primary { width:100%; background:linear-gradient(135deg,var(--accent),#5b8cff); font-weight:700; margin-top:7px; } .danger { width:100%; color:#ff8994; margin-top:8px; }
       .gif-panel { margin-top:24px; display:grid; grid-template-columns:1fr minmax(180px,260px); gap:18px 24px; align-items:center; }
