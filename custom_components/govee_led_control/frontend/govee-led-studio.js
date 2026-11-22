@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.5.12-gallery-grid";
+const CARD_VERSION = "0.5.13-unified-thumbnails";
 const H70_WIDTH = 20;
 const H70_HEIGHT = 26;
 const H70_PIXELS = H70_WIDTH * H70_HEIGHT;
@@ -1173,7 +1173,7 @@ class GoveeLedStudio extends HTMLElement {
         '</div>' +
         '<div class="gallery-meta"><strong>' + escapeHtml(item.name) + '</strong><small>' +
           detail + '</small><span class="gallery-category" title="Catégorie : ' +
-          escapeHtml(item.category || "Non classé") + '">Catégorie : ' +
+          escapeHtml(item.category || "Non classé") + '">' +
           escapeHtml(item.category || "Non classé") + '</span></div>' +
         '<div class="gallery-actions">' +
           '<button type="button" data-gallery-load="' + escapeHtml(item.id) + '">Modifier</button>' +
