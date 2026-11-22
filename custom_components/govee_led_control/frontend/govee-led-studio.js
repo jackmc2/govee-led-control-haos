@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.5.19-area-selection";
+const CARD_VERSION = "0.5.20-area-clipping";
 const H70_WIDTH = 20;
 const H70_HEIGHT = 26;
 const H70_PIXELS = H70_WIDTH * H70_HEIGHT;
@@ -280,7 +280,7 @@ class GoveeLedStudio extends HTMLElement {
                       title="Tracer un rectangle sur la matrice pour déplacer son contenu">▧ Sélectionner une zone</button>
                     <small id="gif-selection-hint" hidden>Glissez sur la matrice pour encadrer la zone à déplacer.</small>
                     <div class="gif-area-direction" id="gif-area-direction" hidden aria-label="Déplacer la zone sélectionnée d'un pixel">
-                      <span>Déplacer la sélection · 1 pixel</span>
+                      <span>Déplacer · 1 pixel (hors grille supprimé)</span>
                       <div class="gif-area-pad">
                         <button id="gif-area-up" type="button" title="Déplacer la zone vers le haut" aria-label="Déplacer la sélection vers le haut">↑</button>
                         <button id="gif-area-left" type="button" title="Déplacer la zone vers la gauche" aria-label="Déplacer la sélection vers la gauche">←</button>
@@ -570,14 +570,13 @@ class GoveeLedStudio extends HTMLElement {
     if (controls) controls.hidden = !enabled;
     const clear = root.querySelector("#gif-selection-clear");
     if (clear) clear.hidden = !selection;
-    for (const [id, permitted] of [
-      ["#gif-area-left", !!selection && selection.left > 0],
-      ["#gif-area-right", !!selection && selection.right < H70_WIDTH - 1],
-      ["#gif-area-up", !!selection && selection.top > 0],
-      ["#gif-area-down", !!selection && selection.bottom < H70_HEIGHT - 1],
+    // Directional shifts remain available at the edges: pixels leaving the
+    // 20x26 curtain are discarded, never wrapped to the opposite edge.
+    for (const id of [
+      "#gif-area-left", "#gif-area-right", "#gif-area-up", "#gif-area-down",
     ]) {
       const button = root.querySelector(id);
-      if (button) button.disabled = !permitted;
+      if (button) button.disabled = !selection;
     }
   }
 
@@ -595,17 +594,15 @@ class GoveeLedStudio extends HTMLElement {
     this._clearGifAreaSelection();
   }
 
-  // Cut-and-move the selected rectangle, including its black pixels, by
-  // exactly one LED. New areas are black; destination pixels are overwritten.
-  // Clipping/wrapping is forbidden, and only the active GIF frame is edited.
+  // Cut-and-move the selected rectangle by exactly one LED. Anything that
+  // leaves the 20x26 grid is clipped (not wrapped) and disappears. Only
+  // the selected GIF frame is modified; a clipped selection stays in bounds.
   _moveGifArea(dx, dy) {
     const area = this._gifSelection;
     const frame = this._gifFrames?.[this._gifFrameIndex];
     if (!this._gifEditing || !this._gifSelectMode || !area || !frame ||
         !Number.isInteger(dx) || !Number.isInteger(dy) ||
         Math.abs(dx) + Math.abs(dy) !== 1 ||
-        area.left + dx < 0 || area.right + dx >= H70_WIDTH ||
-        area.top + dy < 0 || area.bottom + dy >= H70_HEIGHT ||
         !Array.isArray(frame.colors) || frame.colors.length !== H70_PIXELS) return;
 
     const updated = [...frame.colors];
@@ -616,26 +613,29 @@ class GoveeLedStudio extends HTMLElement {
     }
     for (let y = area.top; y <= area.bottom; y += 1) {
       for (let x = area.left; x <= area.right; x += 1) {
-        updated[(y + dy) * H70_WIDTH + x + dx] = frame.colors[y * H70_WIDTH + x];
+        const targetX = x + dx;
+        const targetY = y + dy;
+        if (targetX >= 0 && targetX < H70_WIDTH && targetY >= 0 && targetY < H70_HEIGHT) {
+          updated[targetY * H70_WIDTH + targetX] = frame.colors[y * H70_WIDTH + x];
+        }
       }
     }
+
     const changed = updated.some((color, i) => color !== frame.colors[i]);
-    if (changed) {
-      this._stopGif();
-      this._pushGifUndo();
-      frame.colors = updated;
-    }
-    this._gifSelection = {
-      left: area.left + dx, right: area.right + dx,
-      top: area.top + dy, bottom: area.bottom + dy,
+    const shifted = {
+      left: Math.max(0, area.left + dx),
+      right: Math.min(H70_WIDTH - 1, area.right + dx),
+      top: Math.max(0, area.top + dy),
+      bottom: Math.min(H70_HEIGHT - 1, area.bottom + dy),
     };
-    if (changed) {
-      this._markGifEdited();
-      this._showGifFrame();
-    } else {
-      this._updateGifAreaOverlay();
-      this._updateGifAreaControls();
-    }
+    this._stopGif();
+    this._pushGifUndo(); // The rectangle moves even if its pixels were all black.
+    frame.colors = updated;
+    this._gifSelection = shifted.left <= shifted.right && shifted.top <= shifted.bottom
+      ? shifted : null;
+    this._gifSelectionAnchor = null;
+    if (changed) this._markGifEdited();
+    this._showGifFrame();
   }
 
   _pushGifUndo() {
