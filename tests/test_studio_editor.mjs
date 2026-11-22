@@ -505,3 +505,44 @@ console.log("LED Studio: unified image/GIF editor, import, save, native upload a
   assert.ok(studioSource.includes('id="gif-move-later"'));
 }
 console.log("LED Studio: image shifts, frame reordering, bounds, durations and undo OK");
+
+
+// Visual information architecture: timeline, drawing and save controls are
+// grouped without changing their IDs or the editor event wiring.
+{
+  const markup = studioSource.slice(
+    studioSource.indexOf('<div class="gif-editor" id="gif-editor"'),
+    studioSource.indexOf('<div class="matrix-shell">')
+  );
+  const timeline = markup.indexOf('class="gif-editor-block gif-timeline gif-animation-only"');
+  const drawing = markup.indexOf('class="gif-editor-block gif-drawing-tools"');
+  const saving = markup.indexOf('class="gif-editor-block gif-editor-save-block"');
+  assert.ok(timeline >= 0 && timeline < drawing && drawing < saving,
+    "timeline comes before selected-frame drawing tools and save form");
+
+  for (const id of [
+    "gif-prev", "gif-preview-play", "gif-next", "gif-frame-duration", "gif-frame-range",
+    "gif-filmstrip", "gif-move-earlier", "gif-move-later", "gif-duplicate", "gif-delete",
+  ]) {
+    const index = markup.indexOf('id="' + id + '"');
+    assert.ok(index > timeline && index < drawing, id + " belongs to animation controls");
+    assert.equal(markup.split('id="' + id + '"').length - 1, 1, id + " must be unique");
+  }
+  for (const id of ["gif-shift-left", "gif-shift-right", "gif-undo", "gif-erase", "gif-clear-frame", "gif-clear-still"]) {
+    const index = markup.indexOf('id="' + id + '"');
+    assert.ok(index > drawing && index < saving, id + " belongs to frame drawing controls");
+    assert.equal(markup.split('id="' + id + '"').length - 1, 1, id + " must be unique");
+  }
+  for (const id of ["gif-editor-name", "gif-editor-category", "gif-editor-save"]) {
+    assert.ok(markup.indexOf('id="' + id + '"') > saving, id + " belongs to the save form");
+    assert.equal(markup.split('id="' + id + '"').length - 1, 1, id + " must be unique");
+  }
+  assert.ok(markup.indexOf('id="gif-frame-range"') < markup.indexOf('id="gif-filmstrip"'),
+    "slider precedes the GIF thumbnails");
+  assert.match(new Studio()._styles(), /\.gif-editor-block \{[^}]*border-top:/);
+  assert.match(new Studio()._styles(), /@container\(max-width:440px\) \{\s*\.gif-editor-toolbar/,
+    "narrow displays retain readable playback and timing controls");
+  assert.match(new Studio()._styles(), /\.gif-retouch-actions \{ display:grid;/);
+  assert.ok(markup.includes('class="gif-editor-save"'));
+}
+console.log("LED Studio: structured animation/drawing/save controls and responsive styling OK");
