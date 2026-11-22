@@ -290,7 +290,7 @@ console.log("LED Player: static H70B3 image, native GIF, H6069 image OK");
   instance._renderSelection = () => {};
   instance._renderCategoryFilter();
   assert.match(select.innerHTML, /Toutes les catégories/);
-  assert.match(select.innerHTML, /Sans catégorie/);
+  assert.match(select.innerHTML, /Non classé/);
   assert.match(select.innerHTML, /Halloween/);
   assert.equal((select.innerHTML.match(/>Noël</g) || []).length, 1,
     "same category in different case appears once");
