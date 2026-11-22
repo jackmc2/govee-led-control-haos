@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.5.18-three-column-studio";
+const CARD_VERSION = "0.5.19-area-selection";
 const H70_WIDTH = 20;
 const H70_HEIGHT = 26;
 const H70_PIXELS = H70_WIDTH * H70_HEIGHT;
@@ -150,6 +150,9 @@ class GoveeLedStudio extends HTMLElement {
     this._nativeGifReady ||= false;
     this._gifFrameIndex ||= 0;
     this._gifEraser ||= false;
+    this._gifSelectMode ??= false;
+    this._gifSelection ||= null;
+    this._gifSelectionAnchor ||= null;
     this._gifUndo ||= [];
     this._gifEdited ||= false;
     this._editingGalleryId ||= null;
@@ -270,6 +273,21 @@ class GoveeLedStudio extends HTMLElement {
                     <div class="gif-shift-buttons">
                       <button id="gif-shift-left" type="button" title="Décaler les pixels d'une colonne vers la gauche" aria-label="Décaler le dessin à gauche">←</button>
                       <button id="gif-shift-right" type="button" title="Décaler les pixels d'une colonne vers la droite" aria-label="Décaler le dessin à droite">→</button>
+                    </div>
+                  </div>
+                  <div class="gif-area-tools">
+                    <button id="gif-select-area" type="button" aria-pressed="false"
+                      title="Tracer un rectangle sur la matrice pour déplacer son contenu">▧ Sélectionner une zone</button>
+                    <small id="gif-selection-hint" hidden>Glissez sur la matrice pour encadrer la zone à déplacer.</small>
+                    <div class="gif-area-direction" id="gif-area-direction" hidden aria-label="Déplacer la zone sélectionnée d'un pixel">
+                      <span>Déplacer la sélection · 1 pixel</span>
+                      <div class="gif-area-pad">
+                        <button id="gif-area-up" type="button" title="Déplacer la zone vers le haut" aria-label="Déplacer la sélection vers le haut">↑</button>
+                        <button id="gif-area-left" type="button" title="Déplacer la zone vers la gauche" aria-label="Déplacer la sélection vers la gauche">←</button>
+                        <button id="gif-area-down" type="button" title="Déplacer la zone vers le bas" aria-label="Déplacer la sélection vers le bas">↓</button>
+                        <button id="gif-area-right" type="button" title="Déplacer la zone vers la droite" aria-label="Déplacer la sélection vers la droite">→</button>
+                      </div>
+                      <button id="gif-selection-clear" type="button" hidden>Désélectionner</button>
                     </div>
                   </div>
                   <div class="gif-retouch-actions">
@@ -413,6 +431,12 @@ class GoveeLedStudio extends HTMLElement {
     root.querySelector("#gif-undo").addEventListener("click", () => this._undoGifEdit());
     root.querySelector("#gif-shift-left").addEventListener("click", () => this._shiftGifPixels(-1));
     root.querySelector("#gif-shift-right").addEventListener("click", () => this._shiftGifPixels(1));
+    root.querySelector("#gif-select-area").addEventListener("click", () => this._toggleGifAreaSelection());
+    root.querySelector("#gif-selection-clear").addEventListener("click", () => this._clearGifAreaSelection());
+    root.querySelector("#gif-area-up").addEventListener("click", () => this._moveGifArea(0, -1));
+    root.querySelector("#gif-area-down").addEventListener("click", () => this._moveGifArea(0, 1));
+    root.querySelector("#gif-area-left").addEventListener("click", () => this._moveGifArea(-1, 0));
+    root.querySelector("#gif-area-right").addEventListener("click", () => this._moveGifArea(1, 0));
     root.querySelector("#gif-move-earlier").addEventListener("click", () => this._moveGifFrame(-1));
     root.querySelector("#gif-move-later").addEventListener("click", () => this._moveGifFrame(1));
     root.querySelector("#gif-erase").addEventListener("click", () => {
@@ -431,7 +455,17 @@ class GoveeLedStudio extends HTMLElement {
     pixelGrid.addEventListener("pointerdown", (event) => {
       if (!this._gifEditing || !this._gifFrames.length || event.button > 0) return;
       const index = this._gifPixelAt(event.clientX, event.clientY);
-      if (index === null || this._gifFrames[this._gifFrameIndex].colors[index] === this._gifPaintColor()) return;
+      if (index === null) return;
+      if (this._gifSelectMode) {
+        this._stopGif();
+        this._gifPointerId = event.pointerId;
+        this._gifSelectionAnchor = index;
+        this._setGifAreaSelection(index, index);
+        pixelGrid.setPointerCapture?.(event.pointerId);
+        event.preventDefault();
+        return;
+      }
+      if (this._gifFrames[this._gifFrameIndex].colors[index] === this._gifPaintColor()) return;
       this._stopGif();
       this._pushGifUndo();
       this._gifPointerId = event.pointerId;
@@ -442,13 +476,22 @@ class GoveeLedStudio extends HTMLElement {
     pixelGrid.addEventListener("pointermove", (event) => {
       if (event.pointerId !== this._gifPointerId || !this._gifEditing) return;
       if (event.pointerType === "mouse" && !(event.buttons & 1)) return;
-      const index = this._gifPixelAt(event.clientX, event.clientY);
-      if (index !== null) this._paintGifPixel(index);
+      const index = this._gifSelectMode
+        ? this._gifPixelAtClamped(event.clientX, event.clientY)
+        : this._gifPixelAt(event.clientX, event.clientY);
+      if (index !== null) {
+        if (this._gifSelectMode && this._gifSelectionAnchor !== null) {
+          this._setGifAreaSelection(this._gifSelectionAnchor, index);
+        } else if (!this._gifSelectMode) {
+          this._paintGifPixel(index);
+        }
+      }
       event.preventDefault();
     });
     const endStroke = (event) => {
       if (event.pointerId !== this._gifPointerId) return;
       this._gifPointerId = null;
+      this._gifSelectionAnchor = null;
       if (pixelGrid.hasPointerCapture?.(event.pointerId)) pixelGrid.releasePointerCapture(event.pointerId);
     };
     pixelGrid.addEventListener("pointerup", endStroke);
@@ -472,6 +515,7 @@ class GoveeLedStudio extends HTMLElement {
     this._gifUndo ||= [];
     this._gifUndo.push({
       index: this._gifFrameIndex,
+      selection: this._gifSelection ? { ...this._gifSelection } : null,
       frames: this._gifFrames.map((frame) => ({ colors: [...frame.colors], duration: frame.duration })),
     });
     if (this._gifUndo.length > 15) this._gifUndo.shift();
@@ -509,7 +553,9 @@ class GoveeLedStudio extends HTMLElement {
   _selectGifFrame(index) {
     if (!this._gifEditing || !this._gifFrames.length) return;
     this._stopGif();
-    this._gifFrameIndex = clamp(Math.trunc(index), 0, this._gifFrames.length - 1);
+    const next = clamp(Math.trunc(index), 0, this._gifFrames.length - 1);
+    if (next !== this._gifFrameIndex) this._clearGifAreaSelection();
+    this._gifFrameIndex = next;
     this._showGifFrame();
   }
 
@@ -520,6 +566,7 @@ class GoveeLedStudio extends HTMLElement {
     if (!this._gifEditing || this._editorKind !== "animation" ||
         this._gifFrames.length < 2) return;
     this._stopEditorPreview();
+    if (this._gifSelectMode) this._toggleGifAreaSelection();
     this._editorPlaying = true;
     this._updateEditorPlayButton();
     this._scheduleEditorPreview();
@@ -669,6 +716,7 @@ class GoveeLedStudio extends HTMLElement {
     if (eraser) eraser.classList.toggle("active", !!this._gifEraser);
     const save = root.querySelector("#gif-editor-save");
     if (save) save.disabled = !this._gifEditing || !this._gifFrames.length;
+    this._updateGifAreaControls();
   }
 
   _undoGifEdit() {
@@ -677,6 +725,7 @@ class GoveeLedStudio extends HTMLElement {
     this._stopGif();
     this._gifFrames = entry.frames;
     this._gifFrameIndex = entry.index;
+    this._gifSelection = this._gifSelectMode ? (entry.selection || null) : null;
     this._markGifEdited();
     this._showGifFrame();
     this._setStatus("Dernière modification annulée");
@@ -775,6 +824,9 @@ class GoveeLedStudio extends HTMLElement {
     this._gifEditing = true;
     this._gifFrameIndex = 0;
     this._gifUndo = [];
+    this._gifSelectMode = false;
+    this._gifSelection = null;
+    this._gifSelectionAnchor = null;
     this._gifEraser = false;
     this._gifEdited = false;
     this._nativeGifReady = false;
@@ -801,6 +853,9 @@ class GoveeLedStudio extends HTMLElement {
     this._editorKind = "animation";
     this._gifFrameIndex = 0;
     this._gifUndo = [];
+    this._gifSelectMode = false;
+    this._gifSelection = null;
+    this._gifSelectionAnchor = null;
     this._gifEraser = false;
     this._gifEdited = true;
     this._nativeGifReady = true;
@@ -833,9 +888,12 @@ class GoveeLedStudio extends HTMLElement {
     const grid = this.shadowRoot.querySelector("#h70-grid");
     grid.innerHTML = this._h70.map((color, index) => `<button data-index="${index}" style="--pixel:${color}" title="${index % H70_WIDTH}, ${Math.floor(index / H70_WIDTH)}"></button>`).join("");
     grid.classList.toggle("gif-drawing", !!this._gifEditing);
+    grid.classList.toggle("selecting-area", !!this._gifSelectMode);
+    this._updateGifAreaOverlay();
     grid.querySelectorAll("button").forEach((button) => button.addEventListener("click", () => {
       const index = Number(button.dataset.index);
       if (this._gifEditing && this._gifFrames.length) {
+        if (this._gifSelectMode) return;
         if (this._gifFrames[this._gifFrameIndex].colors[index] !== this._gifPaintColor()) {
           this._stopGif();
           this._pushGifUndo();
@@ -1354,6 +1412,9 @@ class GoveeLedStudio extends HTMLElement {
     this._gifFile = null;
     this._gifFrameIndex = 0;
     this._gifUndo = [];
+    this._gifSelectMode = false;
+    this._gifSelection = null;
+    this._gifSelectionAnchor = null;
     this._gifEraser = false;
     this._gifEdited = false;
     this._editingGalleryId = null;
