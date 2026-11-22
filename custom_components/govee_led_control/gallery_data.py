@@ -8,6 +8,7 @@ from typing import Any
 MAX_ITEMS = 50
 MAX_NAME_LENGTH = 64
 MAX_CATEGORY_LENGTH = 40
+MAX_CATEGORIES = 100
 MAX_ANIMATION_FRAMES = 120
 _HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 
@@ -22,6 +23,18 @@ def _colors(value: object, *, expected: int | None = None) -> list[str]:
     if not all(isinstance(color, str) and _HEX_COLOR.fullmatch(color) for color in value):
         raise ValueError("Artwork contains an invalid color")
     return [color.lower() for color in value]
+
+
+def validate_gallery_category(value: object, *, allow_empty: bool = True) -> str:
+    """Normalize and validate a category name; empty means uncategorized."""
+    if not isinstance(value, str):
+        raise ValueError("Artwork category must be a string")
+    category = value.strip()
+    if not allow_empty and not category:
+        raise ValueError("Give the category a name")
+    if len(category) > MAX_CATEGORY_LENGTH or any(ord(char) < 32 for char in category):
+        raise ValueError("Artwork category must be at most 40 characters on one line")
+    return category
 
 
 def validate_gallery_item(raw: object) -> dict[str, Any]:
@@ -44,12 +57,7 @@ def validate_gallery_item(raw: object) -> dict[str, Any]:
     if kind == "animation" and target != "h70b3":
         raise ValueError("Animations are only supported for H70B3")
 
-    category = raw.get("category", "")
-    if not isinstance(category, str):
-        raise ValueError("Artwork category must be a string")
-    category = category.strip()
-    if len(category) > MAX_CATEGORY_LENGTH or any(ord(char) < 32 for char in category):
-        raise ValueError("Artwork category must be at most 40 characters on one line")
+    category = validate_gallery_category(raw.get("category", ""))
 
     brightness = int(raw.get("brightness", 100))
     if not 1 <= brightness <= 100:

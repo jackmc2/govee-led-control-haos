@@ -491,7 +491,7 @@ class GoveeLedPlayer extends HTMLElement {
       this._categoryFilter = "all";
     }
     select.innerHTML = '<option value="all">Toutes les catégories</option>' +
-      (hasUncategorized ? '<option value="uncategorized">Sans catégorie</option>' : '') +
+      (hasUncategorized ? '<option value="uncategorized">Non classé</option>' : '') +
       values.map(([key, name]) => '<option value="' + playerEscape(key) + '">' + playerEscape(name) + '</option>').join("");
     select.value = this._categoryFilter;
   }
@@ -523,7 +523,7 @@ class GoveeLedPlayer extends HTMLElement {
           '<canvas class="thumb" data-thumb="' + playerEscape(item.id) + '"></canvas>' +
           '<span class="item-meta"><strong>' +
           playerEscape(item.name) + '</strong><small>' + type + ' · ' + target +
-          '</small><small class="category-tag">' + playerEscape(playerCategory(item) || "Sans catégorie") +
+          '</small><small class="category-tag">' + playerEscape(playerCategory(item) || "Non classé") +
           "</small></span></button>";
       }).join("");
       list.querySelectorAll("[data-thumb]").forEach((canvas) => {
@@ -563,7 +563,7 @@ class GoveeLedPlayer extends HTMLElement {
     title.textContent = item.name || "Sans nom";
     info.textContent = (item.target === "h6069" ? "Panneaux H6069" : "Rideau H70B3") +
       (item.kind === "animation" ? " · Animation enregistrée" : " · Image enregistrée") +
-      " · " + (playerCategory(item) || "Sans catégorie");
+      " · " + (playerCategory(item) || "Non classé");
     kind.textContent = item.kind === "animation"
       ? (item.frames || []).length + " images"
       : "Image fixe";
