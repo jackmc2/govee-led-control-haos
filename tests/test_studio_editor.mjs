@@ -763,7 +763,8 @@ console.log("LED Studio: 20x26 rectangular select, 4-way move, clipping, undo an
   studio._gifSelectMode=true;
   studio._gifSelection={left:19,right:19,top:5,bottom:5};
   studio._gifFrames=[{colors:[...colors],duration:150}];
-  studio._showGifFrame=()=>{};
+  // The full editor refresh also updates the direction controls.
+  studio._showGifFrame=()=>{studio._updateGifAreaControls();};
   studio._updateGifAreaControls();
   assert.equal(get("#gif-area-right").disabled,false);
   studio._moveGifArea(1,0);
