@@ -979,6 +979,7 @@ console.log("LED Studio: one-row icon image actions and graphite grid contrast O
 // Opening and closing a creation should show/hide both editor and save panel.
 {
   const {studio,get}=fixture();
+  studio.shadowRoot.querySelectorAll=()=>[];
   studio._renderGifEditor=Studio.prototype._renderGifEditor;
   studio._updateEditorPlayButton=()=>{};
   studio._updateGifTools=()=>{};
