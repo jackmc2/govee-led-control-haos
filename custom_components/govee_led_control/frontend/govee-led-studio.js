@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.5.16-editor-ux";
+const CARD_VERSION = "0.5.17-matrix-contrast";
 const H70_WIDTH = 20;
 const H70_HEIGHT = 26;
 const H70_PIXELS = H70_WIDTH * H70_HEIGHT;
@@ -1465,8 +1465,9 @@ class GoveeLedStudio extends HTMLElement {
         .gif-retouch-actions { grid-template-columns:repeat(2,minmax(0,1fr)); }
       }
       .matrix-shell { width:min(100%,420px); box-sizing:border-box; margin:auto; padding:12px; border-radius:15px; background:#030408; box-shadow:inset 0 0 30px rgba(0,0,0,.8), 0 20px 50px rgba(0,0,0,.22); }
-      .matrix { display:grid; grid-template-columns:repeat(20,1fr); gap:3px; aspect-ratio:20/26; }
-      .matrix.gif-drawing { touch-action:none; } .matrix button { min-width:0; padding:0; border-radius:3px; background:var(--pixel); box-shadow:0 0 5px color-mix(in srgb, var(--pixel) 70%, transparent); }
+      /* A distinct graphite background draws consistent grid lines between all 520 LEDs. */
+      .matrix { display:grid; grid-template-columns:repeat(20,1fr); gap:3px; aspect-ratio:20/26; padding:2px; box-sizing:border-box; border-radius:6px; background:#3b4252; }
+      .matrix.gif-drawing { touch-action:none; } .matrix button { min-width:0; padding:0; border-radius:2px; background:var(--pixel); box-shadow:0 0 2px color-mix(in srgb, var(--pixel) 20%, transparent); }
       .side-panel,.gif-panel { padding:18px; border:1px solid rgba(255,255,255,.08); border-radius:15px; background:rgba(255,255,255,.035); }
       .button-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:15px; } .primary { width:100%; background:linear-gradient(135deg,var(--accent),#5b8cff); font-weight:700; margin-top:7px; } .danger { width:100%; color:#ff8994; margin-top:8px; }
       .gif-panel { margin-top:24px; display:grid; grid-template-columns:1fr minmax(180px,260px); gap:18px 24px; align-items:center; }

@@ -546,3 +546,17 @@ console.log("LED Studio: image shifts, frame reordering, bounds, durations and u
   assert.ok(markup.includes('class="gif-editor-save"'));
 }
 console.log("LED Studio: structured animation/drawing/save controls and responsive styling OK");
+
+
+// Contrast regression: matrix separators must remain visible around black and
+// lit pixels, without changing the native 20 by 26 logical pixel resolution.
+{
+  const css = new Studio()._styles();
+  assert.match(css, /\.matrix \{[^}]*grid-template-columns:repeat\(20,1fr\);[^}]*gap:3px;[^}]*aspect-ratio:20\/26;[^}]*background:#3b4252;/,
+    "graphite gaps separate every native matrix cell");
+  assert.match(css, /\.matrix button \{[^}]*background:var\(--pixel\);[^}]*box-shadow:0 0 2px/,
+    "small soft glow keeps lit pixels discrete");
+  assert.ok(studioSource.includes("const H70_WIDTH = 20;"));
+  assert.ok(studioSource.includes("const H70_HEIGHT = 26;"));
+}
+console.log("LED Studio: pixel separation contrast and native 20x26 geometry OK");
