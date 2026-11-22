@@ -967,14 +967,14 @@ console.log("LED Studio: one-row icon image actions and graphite grid contrast O
   assert.match(toolbar,/class="gif-clear-slot"/);
   assert.match(toolbar,/id="gif-clear-frame"[^>]*aria-label="Effacer l'image"[^>]*><ha-icon icon="mdi:delete-sweep-outline"/);
   assert.match(toolbar,/id="gif-clear-still"[^>]*aria-label="Effacer l'image"[^>]*><ha-icon icon="mdi:delete-sweep-outline"/);
-  assert.match(css,/\\.gif-drawing-actions \\{[^}]*grid-template-columns:repeat\\(6,minmax\\(0,1fr\\)\\)/);
-  assert.match(css,/\\.gif-drawing-actions button ha-icon,[^}]*--mdc-icon-size:20px;/);
-  assert.match(css,/\\.gif-clear-slot button\\[hidden\\] \\{ display:none !important; \\}/);
-  assert.match(css,/\\.gif-area-pad \\{[^}]*grid-template-columns:repeat\\(4,minmax\\(0,1fr\\)\\)/);
+  assert.match(css,/\.gif-drawing-actions \{[^}]*grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/);
+  assert.match(css,/\.gif-drawing-actions button ha-icon,[^}]*--mdc-icon-size:20px;/);
+  assert.match(css,/\.gif-clear-slot button\[hidden\] \{ display:none !important; \}/);
+  assert.match(css,/\.gif-area-pad \{[^}]*grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
   assert.ok(src.indexOf('class="matrix-shell"') < src.indexOf('id="gif-save-panel"'));
-  assert.match(css,/\\.studio-workspace \\.matrix-center-column \\{[^}]*grid-column:2; grid-row:1 \\/ span 4;/);
-  assert.match(css,/\\.gif-save-panel\\[hidden\\] \\{ display:none !important; \\}/);
-  assert.match(src,/root\\.querySelector\\("#gif-save-panel"\\)\\.hidden = !active;/);
+  assert.match(css,/\.studio-workspace \.matrix-center-column \{[^}]*grid-column:2; grid-row:1 \/ span 4;/);
+  assert.match(css,/\.gif-save-panel\[hidden\] \{ display:none !important; \}/);
+  assert.match(src,/root\.querySelector\("#gif-save-panel"\)\.hidden = !active;/);
 }
 // Opening and closing a creation should show/hide both editor and save panel.
 {
