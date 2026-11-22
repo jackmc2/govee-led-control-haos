@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.5.13-unified-thumbnails";
+const CARD_VERSION = "0.5.14-desktop-columns";
 const H70_WIDTH = 20;
 const H70_HEIGHT = 26;
 const H70_PIXELS = H70_WIDTH * H70_HEIGHT;
@@ -223,6 +223,8 @@ class GoveeLedStudio extends HTMLElement {
 
         <div class="device-label">Guirlande H70B3 · 520 LED</div>
 
+        <div class="studio-columns">
+          <div class="studio-workspace">
         <section class="toolbar" id="editor-toolbar" hidden>
           <label class="color-control">Couleur <input id="color" type="color" value="${this._selectedColor}"></label>
           <div class="palette">${PALETTE.map((color) => `<button class="swatch" data-color="${color}" style="--swatch:${color}" title="${color}"></button>`).join("")}</div>
@@ -305,6 +307,7 @@ class GoveeLedStudio extends HTMLElement {
             <div id="gif-info" class="gif-info" hidden aria-live="polite"></div>
           </div>
         </main>
+          </div>
 
         <section class="gallery-panel">
           <div class="gallery-heading">
@@ -326,6 +329,7 @@ class GoveeLedStudio extends HTMLElement {
           </div>
           <div class="gallery-list" id="gallery-list"><p>Chargement de la galerie…</p></div>
         </section>
+        </div>
       </ha-card>`;
     this._rendered = true;
     this._bindEvents();
@@ -1324,6 +1328,8 @@ class GoveeLedStudio extends HTMLElement {
       .status { display:flex; gap:8px; align-items:center; color:#c7cad6; font-size:12px; padding:8px 12px; background:rgba(255,255,255,.06); border-radius:999px; max-width:45%; }
       .status span { width:8px; height:8px; border-radius:50%; background:#33df95; box-shadow:0 0 12px #33df95; flex:none; } .status.error span { background:#ff5364; box-shadow:0 0 12px #ff5364; }
       .device-label { padding:9px 26px; border-bottom:1px solid rgba(255,255,255,.08); color:#b3a5ff; font-size:12px; font-weight:700; }
+      .studio-columns { display:block; min-width:0; }
+      .studio-workspace { min-width:0; }
       button,select,input { font:inherit; } button { min-width:0; border:0; cursor:pointer; color:#e8e9ef; background:rgba(255,255,255,.07); border-radius:10px; padding:10px 13px; transition:.15s ease; overflow-wrap:anywhere; } button:hover { background:rgba(255,255,255,.13); transform:translateY(-1px); } button:disabled { opacity:.38; cursor:not-allowed; transform:none; }
       .toolbar { display:grid; grid-template-columns:auto 1fr minmax(180px,280px); gap:18px; align-items:center; padding:18px 26px; background:rgba(255,255,255,.025); }
       .toolbar[hidden], .stage[hidden] { display:none !important; }
@@ -1405,6 +1411,27 @@ class GoveeLedStudio extends HTMLElement {
       .gallery-actions { grid-column:1/-1; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch; gap:7px; }
       .gallery-actions button { width:100%; min-width:0; min-height:34px; padding:7px 5px; white-space:nowrap; font-size:11px; }
       .danger.compact { margin:0; width:100%; }
+
+      /* At desktop card widths, the editor stays on the left and the library
+         stays on the right; smaller Lovelace columns keep the stacked view. */
+      @container (min-width:940px) {
+        .studio-columns { display:grid; grid-template-columns:minmax(0,1.08fr) minmax(0,1fr); align-items:start; }
+        .studio-workspace { min-width:0; }
+        .gallery-panel { border-top:0; border-left:1px solid rgba(255,255,255,.08); padding:22px 18px 28px; }
+        .toolbar { grid-template-columns:auto minmax(0,1fr); gap:12px; padding:16px 18px; }
+        .toolbar .range-control { grid-column:1/-1; }
+        .view { padding:20px 18px 28px; }
+        .view:not(.editor-active) { padding-top:0; }
+        .stage { grid-template-columns:minmax(0,1fr); gap:14px; }
+        .matrix-shell { max-width:360px; }
+        .gif-panel { grid-template-columns:minmax(0,1fr); gap:13px; }
+        .gif-panel .gif-controls { grid-template-columns:minmax(130px,260px); }
+        .gallery-list { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      }
+      @container (min-width:1580px) {
+        .stage { grid-template-columns:minmax(0,1fr) minmax(190px,240px); gap:18px; }
+        .matrix-shell { max-width:420px; }
+      }
       @container(max-width:720px) { header { padding:20px; } .toolbar { grid-template-columns:1fr; padding:16px 20px; } .stage,.gif-panel { grid-template-columns:1fr; } .view { padding:20px; } .gif-controls { grid-template-columns:1fr; } .status { display:none; } }
       @container(max-width:420px) { .gallery-list { grid-template-columns:minmax(0,1fr); } .gallery-item { grid-template-columns:70px minmax(0,1fr); } .gallery-preview { width:70px; height:92px; } .gallery-preview canvas { max-width:58px; } }
       @container(max-width:440px) { .gif-controls,.button-grid,.gif-editor-save { grid-template-columns:1fr; } }

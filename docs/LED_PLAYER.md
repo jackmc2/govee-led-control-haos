@@ -110,3 +110,9 @@ La gestion se fait dans Home Assistant via la commande WebSocket `govee_led_cont
 - Les filtres par type/catégorie, la luminosité mémorisée et la prévisualisation grand format restent inchangés.
 
 **Installation :** installer la version HACS v0.5.13, redémarrer Home Assistant, puis actualiser les deux cartes (Ctrl+F5).
+
+## Mode desktop LED Studio (0.5.14)
+
+Sur une **carte suffisamment large (≥ 940 px)**, LED Studio dispose de deux colonnes principales : l'espace **Importer ou créer / Éditeur** à gauche, la **Galerie et ses catégories** à droite. La barre d'édition reste associée à l'espace de création. La galerie conserve ses deux miniatures par ligne et ses actions. Lorsque la carte est plus étroite (par exemple Lovelace en deux colonnes, tablette ou téléphone), les panneaux repassent l'un sous l'autre, sans masquer les outils d'édition.
+
+Le passage entre les modes dépend de la **largeur du composant Home Assistant**, pas seulement de la largeur de la fenêtre du navigateur. Il n'y a pas de changement du stockage ou du protocole d'envoi.
