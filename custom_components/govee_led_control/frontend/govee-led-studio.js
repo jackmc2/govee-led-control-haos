@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.5.11-category-manager";
+const CARD_VERSION = "0.5.12-gallery-grid";
 const H70_WIDTH = 20;
 const H70_HEIGHT = 26;
 const H70_PIXELS = H70_WIDTH * H70_HEIGHT;
@@ -1172,10 +1172,14 @@ class GoveeLedStudio extends HTMLElement {
           (animated ? '<span class="gallery-gif-badge">GIF</span>' : '') +
         '</div>' +
         '<div class="gallery-meta"><strong>' + escapeHtml(item.name) + '</strong><small>' +
-          detail + ' · ' + escapeHtml(item.category || "Non classé") + '</small></div>' +
-        '<button type="button" data-gallery-load="' + escapeHtml(item.id) + '">Modifier</button>' +
-        '<button type="button" class="danger compact" data-gallery-delete="' + escapeHtml(item.id) +
-          '" aria-label="Supprimer ' + escapeHtml(item.name) + '">Supprimer</button>' +
+          detail + '</small><span class="gallery-category" title="Catégorie : ' +
+          escapeHtml(item.category || "Non classé") + '">Catégorie : ' +
+          escapeHtml(item.category || "Non classé") + '</span></div>' +
+        '<div class="gallery-actions">' +
+          '<button type="button" data-gallery-load="' + escapeHtml(item.id) + '">Modifier</button>' +
+          '<button type="button" class="danger compact" data-gallery-delete="' + escapeHtml(item.id) +
+            '" aria-label="Supprimer ' + escapeHtml(item.name) + '">Supprimer</button>' +
+        '</div>' +
         '</article>';
     }).join("");
     list.querySelectorAll("[data-gallery-load]").forEach((button) =>
@@ -1387,17 +1391,22 @@ class GoveeLedStudio extends HTMLElement {
       .category-manager-actions select { flex:1 1 170px; min-width:0; }
       .category-manager-actions button { padding:9px 11px; font-size:12px; }
       #category-delete { color:#ff8994; }
-      .gallery-list { display:grid; gap:10px; margin-top:18px; } .gallery-list > p { color:#9297a8; font-size:13px; }
-      .gallery-item { display:grid; grid-template-columns:78px minmax(0,1fr) auto auto; gap:12px; align-items:center; padding:11px; border:1px solid rgba(255,255,255,.09); border-radius:13px; background:rgba(255,255,255,.035); }
-      .gallery-preview { position:relative; display:flex; width:76px; height:104px; flex:none; align-items:center; justify-content:center; padding:5px; overflow:hidden; border-radius:9px; background:#030408; }
-      .gallery-preview canvas { display:block; width:100%; max-width:64px; height:auto; max-height:100%; object-fit:contain; image-rendering:pixelated; }
-      .gallery-gif-badge { position:absolute; bottom:4px; right:4px; padding:2px 4px; font-size:9px; font-weight:700; border-radius:4px; background:rgba(90,68,207,.88); color:white; }
-      .gallery-meta { display:grid; gap:5px; min-width:0; } .gallery-meta strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; } .gallery-meta small { color:#9da7bc; font-size:11px; line-height:1.45; }
-      .gallery-item button { white-space:nowrap; }
-      .danger.compact { margin:0; width:auto; }
+      /* Compact two-column library cards, including on medium-width HA dashboards. */
+      .gallery-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:18px; }
+      .gallery-list > p { grid-column:1/-1; color:#9297a8; font-size:13px; }
+      .gallery-item { display:grid; grid-template-columns:56px minmax(0,1fr); grid-template-rows:1fr auto; gap:9px; min-width:0; align-items:center; padding:10px; border:1px solid rgba(255,255,255,.09); border-radius:13px; background:rgba(255,255,255,.035); }
+      .gallery-preview { position:relative; display:flex; width:56px; height:80px; box-sizing:border-box; align-items:center; justify-content:center; padding:4px; overflow:hidden; border-radius:9px; background:#030408; }
+      .gallery-preview canvas { display:block; width:100%; max-width:48px; height:auto; max-height:100%; object-fit:contain; image-rendering:pixelated; }
+      .gallery-gif-badge { position:absolute; bottom:3px; right:3px; padding:2px 4px; font-size:9px; font-weight:700; border-radius:4px; background:rgba(90,68,207,.88); color:white; }
+      .gallery-meta { display:grid; align-content:center; justify-items:start; gap:5px; min-width:0; }
+      .gallery-meta strong { max-width:100%; overflow-wrap:anywhere; font-size:12px; line-height:1.3; }
+      .gallery-meta small { color:#9da7bc; font-size:10px; line-height:1.4; }
+      .gallery-category { display:inline-block; max-width:100%; box-sizing:border-box; overflow-wrap:anywhere; border-radius:6px; padding:4px 6px; color:#d8cafa; background:rgba(120,87,255,.18); border:1px solid rgba(148,122,255,.32); font-size:10px; line-height:1.25; }
+      .gallery-actions { grid-column:1/-1; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch; gap:7px; }
+      .gallery-actions button { width:100%; min-width:0; min-height:34px; padding:7px 5px; white-space:nowrap; font-size:11px; }
+      .danger.compact { margin:0; width:100%; }
       @container(max-width:720px) { header { padding:20px; } .toolbar { grid-template-columns:1fr; padding:16px 20px; } .stage,.gif-panel { grid-template-columns:1fr; } .view { padding:20px; } .gif-controls { grid-template-columns:1fr; } .status { display:none; } }
-      @container(max-width:720px) { .gallery-item { grid-template-columns:78px minmax(0,1fr) auto; } .gallery-item .danger { grid-column:2/-1; justify-self:stretch; } }
-      @container(max-width:440px) { .gallery-item { grid-template-columns:78px minmax(0,1fr); } .gallery-item [data-gallery-load] { grid-column:2; justify-self:stretch; } .gallery-item .danger { grid-column:2; } }
+      @container(max-width:420px) { .gallery-list { grid-template-columns:minmax(0,1fr); } .gallery-item { grid-template-columns:70px minmax(0,1fr); } .gallery-preview { width:70px; height:92px; } .gallery-preview canvas { max-width:58px; } }
       @container(max-width:440px) { .gif-controls,.button-grid,.gif-editor-save { grid-template-columns:1fr; } }
       @media(max-width:700px) { header { padding:20px; } .toolbar { grid-template-columns:1fr; padding:16px 20px; } .stage,.gif-panel { grid-template-columns:1fr; } .view { padding:20px; } .gif-controls { grid-template-columns:1fr; } .status { display:none; } }
     `;
