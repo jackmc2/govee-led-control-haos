@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.5.6-local-gif-preview";
+const CARD_VERSION = "0.5.11-category-manager";
 const H70_WIDTH = 20;
 const H70_HEIGHT = 26;
 const H70_PIXELS = H70_WIDTH * H70_HEIGHT;
@@ -155,6 +155,7 @@ class GoveeLedStudio extends HTMLElement {
     this._editingGalleryId ||= null;
     this._editingGalleryKind ||= null;
     this._galleryItems ||= [];
+    this._galleryCategories ||= [];
     this._render();
   }
 
@@ -257,7 +258,7 @@ class GoveeLedStudio extends HTMLElement {
                 <div class="gif-editor-save">
                   <input id="gif-editor-name" maxlength="64" placeholder="Nom de la création" aria-label="Nom de la création">
                   <label class="category-editor-label" for="gif-editor-category">Catégorie
-                    <input id="gif-editor-category" maxlength="40" list="govee-category-list" placeholder="Sans catégorie" autocomplete="off">
+                    <input id="gif-editor-category" maxlength="40" list="govee-category-list" placeholder="Non classé" autocomplete="off">
                     <datalist id="govee-category-list"></datalist>
                   </label>
                   <button id="gif-editor-save" class="primary" type="button">Enregistrer l’image</button>
@@ -313,6 +314,16 @@ class GoveeLedStudio extends HTMLElement {
               <p>Chargez une image ou un GIF pour le modifier dans l’éditeur.</p>
             </div>
           </div>
+          <div class="category-manager">
+            <div class="category-manager-head"><strong>Gérer les catégories</strong><small>Les catégories restent disponibles même sans image.</small></div>
+            <div class="category-manager-actions">
+              <select id="manage-category" aria-label="Catégorie à gérer"><option value="">Choisir une catégorie</option></select>
+              <button id="category-create" type="button">+ Créer</button>
+              <button id="category-rename" type="button">Renommer</button>
+              <button id="category-delete" type="button">Supprimer</button>
+            </div>
+            <small>Supprimer une catégorie déplace ses images et GIF dans « Non classé », sans supprimer les fichiers.</small>
+          </div>
           <div class="gallery-list" id="gallery-list"><p>Chargement de la galerie…</p></div>
         </section>
       </ha-card>`;
@@ -321,6 +332,7 @@ class GoveeLedStudio extends HTMLElement {
     this._renderGifEditor();
     if (this._gifEditing && this._gifFrames.length) this._paintH70();
     this._renderGallery();
+    this._renderCategoryManager();
     if (this._hass && !this._galleryLoaded && !this._galleryLoading) this._loadGallery();
   }
 
@@ -375,6 +387,9 @@ class GoveeLedStudio extends HTMLElement {
     root.querySelector("#gif-clear-frame").addEventListener("click", () => this._clearGifFrame());
     root.querySelector("#gif-clear-still").addEventListener("click", () => this._clearGifFrame());
     root.querySelector("#gif-editor-save").addEventListener("click", () => this._saveGifFromEditor());
+    root.querySelector("#category-create").addEventListener("click", () => this._manageCategory("create"));
+    root.querySelector("#category-rename").addEventListener("click", () => this._manageCategory("rename"));
+    root.querySelector("#category-delete").addEventListener("click", () => this._manageCategory("delete"));
     const pixelGrid = root.querySelector("#h70-grid");
     pixelGrid.addEventListener("pointerdown", (event) => {
       if (!this._gifEditing || !this._gifFrames.length || event.button > 0) return;
@@ -998,7 +1013,11 @@ class GoveeLedStudio extends HTMLElement {
     try {
       const result = await this._hass.callWS({ type: "govee_led_control/gallery/list" });
       this._galleryItems = Array.isArray(result?.items) ? result.items : [];
+      this._galleryCategories = Array.isArray(result?.categories)
+        ? result.categories
+        : this._galleryItems.map((item) => item.category).filter((value) => typeof value === "string" && value.trim());
       this._updateCategorySuggestions();
+      this._renderCategoryManager();
       this._galleryLoaded = true;
       this._renderGallery();
     } catch (error) {
@@ -1014,8 +1033,8 @@ class GoveeLedStudio extends HTMLElement {
     const datalist = this.shadowRoot?.querySelector("#govee-category-list");
     if (!datalist) return;
     const unique = new Map();
-    for (const item of this._galleryItems) {
-      const category = typeof item.category === "string" ? item.category.trim() : "";
+    for (const name of [...this._galleryCategories, ...this._galleryItems.map((item) => item.category)]) {
+      const category = typeof name === "string" ? name.trim() : "";
       if (category && !unique.has(category.toLocaleLowerCase("fr"))) {
         unique.set(category.toLocaleLowerCase("fr"), category);
       }
@@ -1024,6 +1043,59 @@ class GoveeLedStudio extends HTMLElement {
       .sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base", numeric: true }))
       .map((name) => '<option value="' + escapeHtml(name) + '"></option>')
       .join("");
+  }
+
+  _renderCategoryManager() {
+    const select = this.shadowRoot?.querySelector("#manage-category");
+    if (!select) return;
+    const previouslySelected = select.value;
+    const categories = [...this._galleryCategories]
+      .sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base", numeric: true }));
+    select.innerHTML = '<option value="">Choisir une catégorie</option>' +
+      categories.map((name) => '<option value="' + escapeHtml(name) + '">' + escapeHtml(name) + '</option>').join("");
+    select.value = categories.includes(previouslySelected) ? previouslySelected : "";
+  }
+
+  async _manageCategory(action) {
+    if (!this._hass?.callWS) return;
+    const select = this.shadowRoot.querySelector("#manage-category");
+    const name = action === "create" ? "" : select.value;
+    if (action !== "create" && !name) {
+      return this._setStatus("Choisissez d'abord une catégorie.", true);
+    }
+    let newName;
+    if (action === "create" || action === "rename") {
+      const answer = window.prompt(
+        action === "create" ? "Nom de la nouvelle catégorie :" : "Nouveau nom de la catégorie :",
+        action === "rename" ? name : ""
+      );
+      if (answer === null) return;
+      newName = answer.trim();
+      if (!newName || newName.length > 40 || /[\\x00-\\x1f]/.test(newName)) {
+        return this._setStatus("Indiquez un nom valide (40 caractères maximum, une ligne).", true);
+      }
+    } else {
+      const count = this._galleryItems.filter((item) =>
+        typeof item.category === "string" && item.category.toLocaleLowerCase("fr") === name.toLocaleLowerCase("fr")
+      ).length;
+      if (!window.confirm('Supprimer la catégorie « ' + name + ' » ? ' +
+        count + ' création(s) passeront dans « Non classé » sans être supprimées.')) return;
+    }
+    const body = { type: "govee_led_control/gallery/category/manage", action, name: action === "create" ? newName : name };
+    if (action === "rename") body.new_name = newName;
+    try {
+      await this._hass.callWS(body);
+      const editor = this.shadowRoot.querySelector("#gif-editor-category");
+      if (action !== "create" && editor.value.trim().toLocaleLowerCase("fr") === name.toLocaleLowerCase("fr")) {
+        editor.value = action === "rename" ? newName : "";
+      }
+      await this._loadGallery(true);
+      select.value = action === "delete" ? "" : newName;
+      this._setStatus(action === "delete" ? "Catégorie supprimée · Images et GIF conservés" :
+        action === "rename" ? "Catégorie renommée dans toute la galerie" : "Catégorie créée");
+    } catch (error) {
+      this._setStatus(error?.message || "Impossible de modifier la catégorie.", true);
+    }
   }
 
   async _saveGallery(kind) {
@@ -1042,8 +1114,8 @@ class GoveeLedStudio extends HTMLElement {
     if (rawCategory.length > 40) {
       return this._setStatus("La catégorie ne doit pas dépasser 40 caractères.", true);
     }
-    const existingCategory = (this._galleryItems || [])
-      .map((entry) => typeof entry.category === "string" ? entry.category.trim() : "")
+    const existingCategory = [...(this._galleryCategories || []), ...(this._galleryItems || [])
+      .map((entry) => typeof entry.category === "string" ? entry.category.trim() : "")]
       .find((value) => value && value.toLocaleLowerCase("fr") === rawCategory.toLocaleLowerCase("fr"));
     const category = existingCategory || rawCategory;
     const target = "h70b3";
@@ -1100,7 +1172,7 @@ class GoveeLedStudio extends HTMLElement {
           (animated ? '<span class="gallery-gif-badge">GIF</span>' : '') +
         '</div>' +
         '<div class="gallery-meta"><strong>' + escapeHtml(item.name) + '</strong><small>' +
-          detail + ' · ' + escapeHtml(item.category || "Sans catégorie") + '</small></div>' +
+          detail + ' · ' + escapeHtml(item.category || "Non classé") + '</small></div>' +
         '<button type="button" data-gallery-load="' + escapeHtml(item.id) + '">Modifier</button>' +
         '<button type="button" class="danger compact" data-gallery-delete="' + escapeHtml(item.id) +
           '" aria-label="Supprimer ' + escapeHtml(item.name) + '">Supprimer</button>' +
@@ -1308,6 +1380,13 @@ class GoveeLedStudio extends HTMLElement {
 
       .gallery-panel { border-top:1px solid rgba(255,255,255,.08); padding:24px 26px 28px; background:rgba(255,255,255,.018); }
       .gallery-heading { display:flex; justify-content:space-between; gap:14px; align-items:end; }
+      .category-manager { margin-top:18px; padding:14px; border:1px solid rgba(148,122,255,.26); background:rgba(120,87,255,.055); border-radius:12px; display:grid; gap:10px; }
+      .category-manager-head { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+      .category-manager-head strong { font-size:13px; } .category-manager small { color:#9da7bc; font-size:11px; }
+      .category-manager-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+      .category-manager-actions select { flex:1 1 170px; min-width:0; }
+      .category-manager-actions button { padding:9px 11px; font-size:12px; }
+      #category-delete { color:#ff8994; }
       .gallery-list { display:grid; gap:10px; margin-top:18px; } .gallery-list > p { color:#9297a8; font-size:13px; }
       .gallery-item { display:grid; grid-template-columns:78px minmax(0,1fr) auto auto; gap:12px; align-items:center; padding:11px; border:1px solid rgba(255,255,255,.09); border-radius:13px; background:rgba(255,255,255,.035); }
       .gallery-preview { position:relative; display:flex; width:76px; height:104px; flex:none; align-items:center; justify-content:center; padding:5px; overflow:hidden; border-radius:9px; background:#030408; }
