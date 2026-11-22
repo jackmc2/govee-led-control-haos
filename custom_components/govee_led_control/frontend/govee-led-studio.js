@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.5.22-compact-image-actions";
+const CARD_VERSION = "0.5.23-drawing-save-layout";
 const H70_WIDTH = 20;
 const H70_HEIGHT = 26;
 const H70_PIXELS = H70_WIDTH * H70_HEIGHT;
@@ -278,39 +278,40 @@ class GoveeLedStudio extends HTMLElement {
                   </div>
                 </section>
 
+
                 <section class="gif-editor-block gif-drawing-tools" aria-label="Outils de dessin">
                   <div class="gif-block-heading"><span>DESSIN</span><small>Image sélectionnée · 20 × 26</small></div>
-                  <div class="gif-pixel-shift" aria-label="Déplacer le dessin dans l'image">
-                    <span>Décalage horizontal · 1 pixel</span>
-                    <div class="gif-shift-buttons">
-                      <button id="gif-shift-left" type="button" title="Décaler les pixels d'une colonne vers la gauche" aria-label="Décaler le dessin à gauche">←</button>
-                      <button id="gif-shift-right" type="button" title="Décaler les pixels d'une colonne vers la droite" aria-label="Décaler le dessin à droite">→</button>
+                  <div class="gif-drawing-actions" aria-label="Actions de dessin">
+                    <button id="gif-shift-left" type="button" title="Décaler toute l'image vers la gauche" aria-label="Décaler toute l'image vers la gauche" ><ha-icon icon="mdi:arrow-left"></ha-icon></button>
+                    <button id="gif-shift-right" type="button" title="Décaler toute l'image vers la droite" aria-label="Décaler toute l'image vers la droite" ><ha-icon icon="mdi:arrow-right"></ha-icon></button>
+                    <button id="gif-select-area" type="button" title="Sélectionner une zone" aria-label="Sélectionner une zone" aria-pressed="false"><ha-icon icon="mdi:selection"></ha-icon></button>
+                    <button id="gif-undo" type="button" title="Annuler" aria-label="Annuler" disabled><ha-icon icon="mdi:undo"></ha-icon></button>
+                    <button id="gif-erase" type="button" title="Gomme" aria-label="Gomme" aria-pressed="false"><ha-icon icon="mdi:eraser"></ha-icon></button>
+                    <div class="gif-clear-slot">
+                      <button id="gif-clear-frame" class="gif-animation-only" type="button" title="Effacer l'image du GIF" aria-label="Effacer l'image"><ha-icon icon="mdi:delete-sweep-outline"></ha-icon></button>
+                      <button id="gif-clear-still" class="gif-clear-still" type="button" title="Effacer l'image" aria-label="Effacer l'image"><ha-icon icon="mdi:delete-sweep-outline"></ha-icon></button>
                     </div>
                   </div>
-                  <div class="gif-area-tools">
-                    <button id="gif-select-area" type="button" aria-pressed="false"
-                      title="Tracer un rectangle sur la matrice pour déplacer son contenu">▧ Sélectionner une zone</button>
-                    <small id="gif-selection-hint" hidden>Glissez sur la matrice pour encadrer la zone à déplacer.</small>
-                    <div class="gif-area-direction" id="gif-area-direction" hidden aria-label="Déplacer la zone sélectionnée d'un pixel">
-                      <span>Déplacer · 1 pixel (hors grille supprimé)</span>
-                      <div class="gif-area-pad">
-                        <button id="gif-area-up" type="button" title="Déplacer la zone vers le haut" aria-label="Déplacer la sélection vers le haut">↑</button>
-                        <button id="gif-area-left" type="button" title="Déplacer la zone vers la gauche" aria-label="Déplacer la sélection vers la gauche">←</button>
-                        <button id="gif-area-down" type="button" title="Déplacer la zone vers le bas" aria-label="Déplacer la sélection vers le bas">↓</button>
-                        <button id="gif-area-right" type="button" title="Déplacer la zone vers la droite" aria-label="Déplacer la sélection vers la droite">→</button>
-                      </div>
-                      <button id="gif-selection-clear" type="button" hidden>Désélectionner</button>
+                  <small id="gif-selection-hint" class="gif-selection-hint" hidden>Glissez sur la matrice pour encadrer la zone à déplacer.</small>
+                  <div class="gif-area-direction" id="gif-area-direction" hidden aria-label="Déplacer la zone sélectionnée d'un pixel">
+                    <span>Déplacer la sélection · 1 pixel (hors grille supprimé)</span>
+                    <div class="gif-area-pad">
+                      <button id="gif-area-up" type="button" title="Déplacer la sélection vers le haut" aria-label="Déplacer la sélection vers le haut" ><ha-icon icon="mdi:arrow-up"></ha-icon></button>
+                      <button id="gif-area-left" type="button" title="Déplacer la sélection vers la gauche" aria-label="Déplacer la sélection vers la gauche" ><ha-icon icon="mdi:arrow-left"></ha-icon></button>
+                      <button id="gif-area-down" type="button" title="Déplacer la sélection vers le bas" aria-label="Déplacer la sélection vers le bas" ><ha-icon icon="mdi:arrow-down"></ha-icon></button>
+                      <button id="gif-area-right" type="button" title="Déplacer la sélection vers la droite" aria-label="Déplacer la sélection vers la droite" ><ha-icon icon="mdi:arrow-right"></ha-icon></button>
                     </div>
-                  </div>
-                  <div class="gif-retouch-actions">
-                    <button id="gif-undo" title="Annuler" type="button" disabled>↶ Annuler</button>
-                    <button id="gif-erase" title="Peindre en noir" type="button">⌫ Gomme</button>
-                    <button id="gif-clear-frame" class="gif-animation-only" type="button">Effacer l'image</button>
-                    <button id="gif-clear-still" class="gif-clear-still" type="button">Effacer l'image</button>
+                    <button id="gif-selection-clear" type="button" title="Désélectionner" aria-label="Désélectionner" hidden><ha-icon icon="mdi:selection-off"></ha-icon></button>
                   </div>
                 </section>
 
-                <section class="gif-editor-block gif-editor-save-block" aria-label="Enregistrement de la création">
+
+
+                <small class="gif-editor-help">Dessinez directement sur la matrice. Les modifications restent locales jusqu'à l'enregistrement ou l'envoi.</small>
+              </div>
+              <div class="matrix-center-column">
+                <div class="matrix-shell"><div id="h70-grid" class="matrix"></div></div>
+                <section id="gif-save-panel" class="gif-editor-block gif-editor-save-block gif-save-panel" aria-label="Enregistrement de la création" hidden>
                   <div class="gif-block-heading"><span>ENREGISTRER</span></div>
                   <div class="gif-editor-save">
                     <label class="gif-name-label" for="gif-editor-name">Nom
@@ -323,10 +324,7 @@ class GoveeLedStudio extends HTMLElement {
                     <button id="gif-editor-save" class="primary" type="button">Enregistrer l’image</button>
                   </div>
                 </section>
-
-                <small class="gif-editor-help">Dessinez directement sur la matrice. Les modifications restent locales jusqu'à l'enregistrement ou l'envoi.</small>
               </div>
-              <div class="matrix-shell"><div id="h70-grid" class="matrix"></div></div>
             </div>
             <div class="side-panel">
               <h2>Motifs</h2>
@@ -583,7 +581,10 @@ class GoveeLedStudio extends HTMLElement {
       toggle.disabled = !this._gifEditing;
       toggle.classList?.toggle("active", enabled);
       toggle.setAttribute?.("aria-pressed", String(enabled));
-      toggle.textContent = enabled ? "▧ Quitter la sélection" : "▧ Sélectionner une zone";
+      const label = enabled ? "Quitter la sélection" : "Sélectionner une zone";
+      toggle.title = label;
+      toggle.setAttribute?.("aria-label", label);
+      toggle.querySelector?.("ha-icon")?.setAttribute?.("icon", enabled ? "mdi:selection-off" : "mdi:selection");
     }
     const help = root.querySelector("#gif-selection-hint");
     if (help) help.hidden = !enabled;
@@ -808,6 +809,7 @@ class GoveeLedStudio extends HTMLElement {
     root.querySelector("#curtain").classList.toggle("editor-active", active);
     root.querySelector(".studio-workspace")?.classList.toggle("is-editing", active);
     editor.hidden = !active;
+    root.querySelector("#gif-save-panel").hidden = !active;
     editor.classList.toggle("is-still", active && !animation);
     root.querySelectorAll(".gif-animation-only").forEach((element) => {
       element.hidden = !animation;
@@ -871,7 +873,10 @@ class GoveeLedStudio extends HTMLElement {
     const undo = root.querySelector("#gif-undo");
     if (undo) undo.disabled = !this._gifUndo?.length;
     const eraser = root.querySelector("#gif-erase");
-    if (eraser) eraser.classList.toggle("active", !!this._gifEraser);
+    if (eraser) {
+      eraser.classList.toggle("active", !!this._gifEraser);
+      eraser.setAttribute?.("aria-pressed", String(!!this._gifEraser));
+    }
     const save = root.querySelector("#gif-editor-save");
     if (save) save.disabled = !this._gifEditing || !this._gifFrames.length;
     this._updateGifAreaControls();
@@ -1639,6 +1644,10 @@ class GoveeLedStudio extends HTMLElement {
       .view:not(.editor-active) .gif-panel { margin-top:18px; }
       .stage { display:grid; grid-template-columns:minmax(280px,1fr) minmax(190px,260px); gap:24px; align-items:start; } .stage > *,.gif-panel > * { min-width:0; }
       .matrix-editor-area { min-width:0; display:grid; gap:14px; }
+      .matrix-center-column { min-width:0; display:grid; gap:14px; align-content:start; }
+      .gif-save-panel { min-width:0; box-sizing:border-box; padding:15px; background:rgba(120,87,255,.055); border:1px solid rgba(148,122,255,.26); border-radius:14px; }
+      .gif-save-panel[hidden] { display:none !important; }
+      .gif-save-panel.gif-editor-block { border-top:0; padding:15px; }
       .gif-editor[hidden] { display:none !important; }
       .gif-animation-only[hidden] { display:none !important; }
       .gif-editor.is-still .gif-animation-only { display:none !important; }
@@ -1651,7 +1660,7 @@ class GoveeLedStudio extends HTMLElement {
       .gif-block-heading small { font-size:10px; font-weight:500; letter-spacing:0; color:#8f96ae; }
       .gif-block-heading-sub { padding-top:4px; }
       .gif-editor-toolbar { display:grid; grid-template-columns:36px minmax(70px,1fr) 36px auto; align-items:center; gap:7px; }
-      .gif-editor-toolbar button,.gif-order-actions button,.gif-retouch-actions button,.gif-pixel-shift button { padding:8px; font-size:12px; min-height:36px; }
+      .gif-editor-toolbar button,.gif-order-actions button,.gif-drawing-actions button,.gif-area-pad button { padding:8px; font-size:12px; min-height:36px; }
       .gif-editor-toolbar .gif-frame-timing { display:flex; align-items:center; justify-content:end; gap:5px; white-space:nowrap; }
       .gif-editor-toolbar input[type=number] { box-sizing:border-box; width:58px; border:1px solid rgba(255,255,255,.2); color:white; background:#212536; padding:6px; border-radius:7px; text-align:center; }
       .gif-editor-toolbar button.active,.gif-retouch-actions button.active { background:#5f4dca; color:white; }
@@ -1667,24 +1676,20 @@ class GoveeLedStudio extends HTMLElement {
       .gif-order-actions button { display:flex; align-items:center; justify-content:center; width:100%; min-width:0; min-height:40px; padding:7px; border:1px solid rgba(148,122,255,.24); background:rgba(120,87,255,.12); }
       .gif-order-actions button ha-icon { --mdc-icon-size:20px; }
       .gif-order-actions #gif-delete { color:#ff9ca9; }
-      .gif-pixel-shift { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
-      .gif-pixel-shift span { font-size:12px; color:#bdc1d4; }
-      .gif-shift-buttons { display:flex; gap:7px; }
-      .gif-shift-buttons button { min-width:43px; background:rgba(120,87,255,.19); border:1px solid rgba(148,122,255,.34); font-size:17px; }
-      .gif-area-tools { display:grid; gap:9px; min-width:0; }
-      .gif-area-tools > button { width:100%; text-align:center; padding:9px 11px; border:1px solid rgba(148,122,255,.36); font-size:12px; }
-      .gif-area-tools > button.active { background:rgba(120,87,255,.40); border-color:#b5a3ff; font-weight:700; }
+      .gif-drawing-actions { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:7px; min-width:0; }
+      .gif-drawing-actions button,.gif-area-pad button { display:flex; align-items:center; justify-content:center; width:100%; min-width:0; min-height:40px; border:1px solid rgba(148,122,255,.24); background:rgba(120,87,255,.12); border-radius:10px; }
+      .gif-drawing-actions button ha-icon,.gif-area-pad button ha-icon,#gif-selection-clear ha-icon { --mdc-icon-size:20px; }
+      .gif-drawing-actions button.active { background:rgba(120,87,255,.40); border-color:#b5a3ff; color:white; }
+      .gif-clear-slot { min-width:0; }
+      .gif-clear-slot button[hidden] { display:none !important; }
+      .gif-drawing-actions #gif-clear-frame,.gif-drawing-actions #gif-clear-still { color:#ffb1bb; }
+      .gif-editor:not(.is-still) .gif-clear-still { display:none !important; }
       .gif-selection-hint { color:#b9c2d4; font-size:11px; }
-      .gif-area-direction { display:grid; gap:8px; }
+      .gif-area-direction { display:grid; gap:9px; }
       .gif-area-direction > span { color:#b8bed0; font-size:12px; }
       .gif-area-pad { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; }
-      .gif-area-pad button { padding:7px 10px; font-size:19px; min-height:39px; background:rgba(120,87,255,.18); border:1px solid rgba(148,122,255,.34); }
-      #gif-selection-clear { justify-self:start; padding:6px 10px; font-size:11px; color:#d9d4f3; }
+      #gif-selection-clear { justify-self:start; display:flex; align-items:center; justify-content:center; min-width:42px; min-height:36px; padding:7px; border:1px solid rgba(148,122,255,.24); }
       .gif-area-direction[hidden],#gif-selection-hint[hidden],#gif-selection-clear[hidden] { display:none !important; }
-      .gif-retouch-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
-      .gif-retouch-actions button { min-width:0; }
-      .gif-retouch-actions #gif-clear-frame,.gif-retouch-actions #gif-clear-still { color:#ffb1bb; }
-      .gif-editor:not(.is-still) .gif-clear-still { display:none !important; }
       .gif-editor-save { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:9px; align-items:end; }
       .gif-editor-save input { min-width:0; width:100%; box-sizing:border-box; border:1px solid rgba(255,255,255,.14); background:#222532; color:white; border-radius:8px; padding:9px; }
       .gif-editor-save .gif-name-label { grid-column:1/-1; }
@@ -1696,7 +1701,7 @@ class GoveeLedStudio extends HTMLElement {
       @container(max-width:440px) {
         .gif-editor-toolbar { grid-template-columns:36px minmax(0,1fr) 36px; }
         .gif-editor-toolbar .gif-frame-timing { grid-column:1/-1; justify-content:start; }
-        .gif-retouch-actions { grid-template-columns:repeat(2,minmax(0,1fr)); }
+        .gif-drawing-actions { grid-template-columns:repeat(3,minmax(0,1fr)); }
       }
       .matrix-shell { width:min(100%,420px); box-sizing:border-box; margin:auto; padding:12px; border-radius:15px; background:#030408; box-shadow:inset 0 0 30px rgba(0,0,0,.8), 0 20px 50px rgba(0,0,0,.22); }
       /* A distinct graphite background draws consistent grid lines between all 520 LEDs. */
@@ -1789,16 +1794,18 @@ class GoveeLedStudio extends HTMLElement {
           grid-template-columns:minmax(0,1fr); gap:12px;
         }
         .studio-workspace .gif-panel .gif-controls { grid-template-columns:minmax(0,1fr); }
-        .studio-workspace .matrix-shell {
+        .studio-workspace .matrix-center-column {
           grid-column:2; grid-row:1 / span 4; align-self:start;
-          width:min(100%,460px); max-width:none; min-width:0; margin:0 auto;
+          display:grid; gap:14px; min-width:0; align-content:start;
         }
+        .studio-workspace .matrix-shell { width:min(100%,460px); max-width:none; min-width:0; margin:0 auto; }
+        .studio-workspace .gif-save-panel { width:min(100%,460px); max-width:100%; margin:0 auto; }
         .studio-workspace:not(.is-editing) .gif-panel { grid-column:1/-1; grid-row:1; }
         .gallery-panel { grid-column:2; min-width:0; border-left:1px solid rgba(255,255,255,.1); padding:22px 16px 28px; }
         .gallery-list { grid-template-columns:repeat(2,minmax(0,1fr)); }
         .gif-editor-toolbar { grid-template-columns:36px minmax(0,1fr) 36px; }
         .gif-editor-toolbar .gif-frame-timing { grid-column:1/-1; justify-content:start; }
-        .gif-retouch-actions { grid-template-columns:repeat(2,minmax(0,1fr)); }
+        .gif-drawing-actions { grid-template-columns:repeat(6,minmax(0,1fr)); }
       }
       @container(max-width:720px) { header { padding:20px; } .toolbar { grid-template-columns:1fr; padding:16px 20px; } .stage,.gif-panel { grid-template-columns:1fr; } .view { padding:20px; } .gif-controls { grid-template-columns:1fr; } .status { display:none; } }
       @container(max-width:420px) { .gallery-list { grid-template-columns:minmax(0,1fr); } .gallery-item { grid-template-columns:70px minmax(0,1fr); } .gallery-preview { width:70px; height:92px; } .gallery-preview canvas { max-width:58px; } }
