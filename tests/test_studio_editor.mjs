@@ -552,8 +552,8 @@ console.log("LED Studio: structured animation/drawing/save controls and responsi
 // lit pixels, without changing the native 20 by 26 logical pixel resolution.
 {
   const css = new Studio()._styles();
-  assert.match(css, /\.matrix \{[^}]*grid-template-columns:repeat\(20,1fr\);[^}]*gap:3px;[^}]*aspect-ratio:20\/26;[^}]*background:#7857ff;/,
-    "violet #7857ff gaps separate every native matrix cell");
+  assert.match(css, /\.matrix \{[^}]*grid-template-columns:repeat\(20,1fr\);[^}]*gap:3px;[^}]*aspect-ratio:20\/26;[^}]*background:#3b4252;/,
+    "graphite #3b4252 gaps separate every native matrix cell");
   assert.match(css, /\.matrix button \{[^}]*background:var\(--pixel\);[^}]*box-shadow:0 0 2px/,
     "small soft glow keeps lit pixels discrete");
   assert.ok(studioSource.includes("const H70_WIDTH = 20;"));
@@ -899,3 +899,36 @@ console.log("LED Studio: clip selected rectangles at all four edges, without wra
   assert.equal(studio._gifUndo.length,history,"not editing means no erase");
 }
 console.log("LED Studio: saturated RGB swatches, right-click eraser and Undo OK");
+
+
+// The image timeline keeps all four frame actions on one compact row, with
+// accessible Material Design Icons, while the matrix separators remain grey.
+{
+  const src = studioSource;
+  const from = src.indexOf('<span>IMAGES</span>');
+  const to = src.indexOf('</div>', src.indexOf('class="gif-order-actions"', from));
+  const html = src.slice(from, to);
+  assert.ok(from > 0 && to > from, "IMAGES heading and action row exist");
+  assert.doesNotMatch(src, /ORDRE DES IMAGES/, "old verbose heading removed");
+  const actions = [
+    ['gif-move-earlier', 'mdi:arrow-left', "Reculer l'image"],
+    ['gif-move-later', 'mdi:arrow-right', "Avancer l'image"],
+    ['gif-duplicate', 'mdi:plus', 'Ajouter une image'],
+    ['gif-delete', 'mdi:delete-outline', "Supprimer l'image"],
+  ];
+  let previous = -1;
+  for (const [id, icon, title] of actions) {
+    const match = html.match(new RegExp('<button id="' + id + '"[^>]*aria-label="([^"]+)"[^>]*><ha-icon icon="([^"]+)"></ha-icon></button>'));
+    assert.ok(match, id + " is an accessible icon-only button in the single action row");
+    assert.equal(match[1], title);
+    assert.equal(match[2], icon);
+    const offset = html.indexOf('id="' + id + '"');
+    assert.ok(offset > previous, "image action order must remain left/right/add/delete");
+    previous = offset;
+    assert.equal(src.split('id="' + id + '"').length - 1, 1, id + " remains unique");
+  }
+  assert.match(new Studio()._styles(), /\.gif-order-actions \{[^}]*grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+  assert.match(new Studio()._styles(), /\.gif-order-actions button ha-icon \{ --mdc-icon-size:20px; \}/);
+  assert.match(new Studio()._styles(), /\.matrix \{[^}]*background:#3b4252;/);
+}
+console.log("LED Studio: one-row icon image actions and graphite grid contrast OK");
