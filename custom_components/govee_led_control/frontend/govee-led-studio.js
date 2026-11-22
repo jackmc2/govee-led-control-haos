@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.5.14-desktop-columns";
+const CARD_VERSION = "0.5.15-shift-reorder";
 const H70_WIDTH = 20;
 const H70_HEIGHT = 26;
 const H70_PIXELS = H70_WIDTH * H70_HEIGHT;
@@ -249,9 +249,16 @@ class GoveeLedStudio extends HTMLElement {
                   <button id="gif-undo" title="Annuler" type="button" disabled>↶ Annuler</button>
                   <button id="gif-erase" title="Peindre en noir" type="button">⌫ Gomme</button>
                 </div>
+                <div class="gif-pixel-shift" aria-label="Déplacer le dessin dans l'image">
+                  <span>Décaler le dessin (1 pixel)</span>
+                  <button id="gif-shift-left" type="button" title="Décaler les pixels d'une colonne vers la gauche" aria-label="Décaler le dessin à gauche">←</button>
+                  <button id="gif-shift-right" type="button" title="Décaler les pixels d'une colonne vers la droite" aria-label="Décaler le dessin à droite">→</button>
+                </div>
                 <input id="gif-frame-range" class="gif-animation-only" aria-label="Numéro d'image du GIF" type="range" min="1" max="1" value="1">
                 <div class="gif-filmstrip gif-animation-only" id="gif-filmstrip" aria-label="Images du GIF"></div>
                 <div class="gif-editor-actions gif-animation-only">
+                  <button id="gif-move-earlier" title="Reculer l'image sélectionnée dans l'ordre du GIF" type="button">← Reculer l'image</button>
+                  <button id="gif-move-later" title="Avancer l'image sélectionnée dans l'ordre du GIF" type="button">Avancer l'image →</button>
                   <button id="gif-duplicate" type="button">+ Ajouter une image</button>
                   <button id="gif-delete" type="button">− Supprimer</button>
                   <button id="gif-clear-frame" type="button">Effacer l'image</button>
@@ -382,6 +389,10 @@ class GoveeLedStudio extends HTMLElement {
     root.querySelector("#gif-frame-range").addEventListener("input", (event) => this._selectGifFrame(Number(event.target.value) - 1));
     root.querySelector("#gif-frame-duration").addEventListener("change", (event) => this._setGifDuration(Number(event.target.value)));
     root.querySelector("#gif-undo").addEventListener("click", () => this._undoGifEdit());
+    root.querySelector("#gif-shift-left").addEventListener("click", () => this._shiftGifPixels(-1));
+    root.querySelector("#gif-shift-right").addEventListener("click", () => this._shiftGifPixels(1));
+    root.querySelector("#gif-move-earlier").addEventListener("click", () => this._moveGifFrame(-1));
+    root.querySelector("#gif-move-later").addEventListener("click", () => this._moveGifFrame(1));
     root.querySelector("#gif-erase").addEventListener("click", () => {
       this._gifEraser = !this._gifEraser;
       this._updateGifTools();
@@ -526,6 +537,8 @@ class GoveeLedStudio extends HTMLElement {
     root.querySelector("#gif-frame-duration").value = frame.duration;
     root.querySelector("#gif-prev").disabled = this._gifFrameIndex === 0;
     root.querySelector("#gif-next").disabled = this._gifFrameIndex === this._gifFrames.length - 1;
+    root.querySelector("#gif-move-earlier").disabled = this._gifFrameIndex === 0;
+    root.querySelector("#gif-move-later").disabled = this._gifFrameIndex === this._gifFrames.length - 1;
     root.querySelectorAll("#gif-filmstrip [data-frame]").forEach((button) =>
       button.classList.toggle("active", Number(button.dataset.frame) === this._gifFrameIndex));
   }
@@ -586,6 +599,8 @@ class GoveeLedStudio extends HTMLElement {
     root.querySelector("#gif-frame-duration").value = this._gifFrames[this._gifFrameIndex].duration;
     root.querySelector("#gif-prev").disabled = !animation || this._gifFrameIndex === 0;
     root.querySelector("#gif-next").disabled = !animation || this._gifFrameIndex === count - 1;
+    root.querySelector("#gif-move-earlier").disabled = !animation || this._gifFrameIndex === 0;
+    root.querySelector("#gif-move-later").disabled = !animation || this._gifFrameIndex === count - 1;
     root.querySelector("#gif-duplicate").disabled = !animation || count >= 120;
     root.querySelector("#gif-delete").disabled = !animation || count <= 1;
     this._updateEditorPlayButton();
@@ -653,6 +668,45 @@ class GoveeLedStudio extends HTMLElement {
       this._markGifEdited();
     }
     this._renderGifEditor();
+  }
+
+  // Shift the actual 20x26 RGB matrix: never wrap pixels across rows or edges.
+  // This edits only the selected frame; newly uncovered pixels become black.
+  _shiftGifPixels(deltaX) {
+    if (!this._gifEditing || !this._gifFrames[this._gifFrameIndex] ||
+        (deltaX !== -1 && deltaX !== 1)) return;
+    const frame = this._gifFrames[this._gifFrameIndex];
+    if (!Array.isArray(frame.colors) || frame.colors.length !== H70_PIXELS) return;
+    const shifted = Array(H70_PIXELS).fill(BLACK);
+    for (let y = 0; y < H70_HEIGHT; y += 1) {
+      for (let x = 0; x < H70_WIDTH; x += 1) {
+        const targetX = x + deltaX;
+        if (targetX >= 0 && targetX < H70_WIDTH) {
+          shifted[y * H70_WIDTH + targetX] = frame.colors[y * H70_WIDTH + x];
+        }
+      }
+    }
+    if (shifted.every((color, index) => color === frame.colors[index])) return;
+    this._stopGif();
+    this._pushGifUndo();
+    frame.colors = shifted;
+    this._markGifEdited();
+    this._showGifFrame();
+  }
+
+  // Reorder a timeline frame together with its duration, keeping it selected.
+  _moveGifFrame(delta) {
+    if (!this._gifEditing || this._editorKind !== "animation" ||
+        (delta !== -1 && delta !== 1)) return;
+    const index = this._gifFrameIndex;
+    const next = index + delta;
+    if (next < 0 || next >= this._gifFrames.length) return;
+    this._stopGif();
+    this._pushGifUndo();
+    [this._gifFrames[index], this._gifFrames[next]] = [this._gifFrames[next], this._gifFrames[index]];
+    this._gifFrameIndex = next;
+    this._markGifEdited();
+    this._showGifFrame();
   }
 
   _duplicateGifFrame() {
@@ -1349,7 +1403,10 @@ class GoveeLedStudio extends HTMLElement {
       .gif-editor-head strong { color:#f4f0ff; }
       .gif-editor-head span { color:#b3a5ff; font-variant-numeric:tabular-nums; font-size:12px; }
       .gif-editor-toolbar { display:flex; flex-wrap:wrap; gap:7px; align-items:center; }
-      .gif-editor-toolbar button,.gif-editor-actions button { padding:7px 10px; font-size:12px; }
+      .gif-editor-toolbar button,.gif-editor-actions button,.gif-pixel-shift button { padding:7px 10px; font-size:12px; }
+      .gif-pixel-shift { display:flex; flex-wrap:wrap; align-items:center; gap:7px; }
+      .gif-pixel-shift span { font-size:12px; color:#b3a5ff; }
+      .gif-pixel-shift button { min-width:38px; background:rgba(120,87,255,.19); border:1px solid rgba(148,122,255,.34); }
       .gif-editor-toolbar label { display:flex; align-items:center; gap:5px; }
       .gif-editor-toolbar input[type=number] { box-sizing:border-box; width:64px; border:1px solid rgba(255,255,255,.2); color:white; background:#212536; padding:6px; border-radius:7px; }
       .gif-editor-toolbar button.active { background:#5f4dca; color:white; }
