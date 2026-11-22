@@ -1,13 +1,24 @@
-const CARD_VERSION = "0.5.20-area-clipping";
+const CARD_VERSION = "0.5.21-rgb-palette-right-click";
 const H70_WIDTH = 20;
 const H70_HEIGHT = 26;
 const H70_PIXELS = H70_WIDTH * H70_HEIGHT;
 const BLACK = "#000000";
 
+// Fully saturated RGB swatches: primary channels are exact 0/255 (orange,
+// lime, violet and pink use a single 128 intermediate channel).
 const PALETTE = [
-  "#ff1744", "#ff6d00", "#ffd600", "#76ff03", "#00e676",
-  "#00e5ff", "#2979ff", "#651fff", "#d500f9", "#ff4081",
-  "#ffffff", "#000000",
+  { name: "Rouge", color: "#ff0000" },
+  { name: "Orange", color: "#ff8000" },
+  { name: "Jaune", color: "#ffff00" },
+  { name: "Vert citron", color: "#80ff00" },
+  { name: "Vert", color: "#00ff00" },
+  { name: "Cyan", color: "#00ffff" },
+  { name: "Bleu", color: "#0000ff" },
+  { name: "Violet", color: "#8000ff" },
+  { name: "Magenta", color: "#ff00ff" },
+  { name: "Rose", color: "#ff0080" },
+  { name: "Blanc", color: "#ffffff" },
+  { name: "Noir", color: "#000000" },
 ];
 
 function clamp(value, min, max) {
@@ -137,7 +148,7 @@ class GoveeLedStudio extends HTMLElement {
   setConfig(config) {
     this.config = { ...GoveeLedStudio.getStubConfig(), ...config };
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
-    this._selectedColor ||= "#ff1744";
+    this._selectedColor ||= "#ff0000";
     this._brightness ||= 70;
     this._fit ||= "contain";
     this._h70 ||= Array(H70_PIXELS).fill(BLACK);
@@ -230,7 +241,10 @@ class GoveeLedStudio extends HTMLElement {
           <div class="studio-workspace">
         <section class="toolbar" id="editor-toolbar" hidden>
           <label class="color-control">Couleur <input id="color" type="color" value="${this._selectedColor}"></label>
-          <div class="palette">${PALETTE.map((color) => `<button class="swatch" data-color="${color}" style="--swatch:${color}" title="${color}"></button>`).join("")}</div>
+          <div class="palette">${PALETTE.map(({ name, color }) =>
+            `<button type="button" class="swatch" data-color="${color}" style="--swatch:${color}"
+              title="${name} · RGB ${[1, 3, 5].map((pos) => parseInt(color.slice(pos, pos + 2), 16)).join(', ')}"
+              aria-label="${name}"></button>`).join("")}</div>
           <label class="range-control">Luminosité <strong id="brightness-value">${this._brightness}%</strong>
             <input id="brightness" type="range" min="1" max="100" value="${this._brightness}">
           </label>
@@ -452,6 +466,15 @@ class GoveeLedStudio extends HTMLElement {
     root.querySelector("#category-rename").addEventListener("click", () => this._manageCategory("rename"));
     root.querySelector("#category-delete").addEventListener("click", () => this._manageCategory("delete"));
     const pixelGrid = root.querySelector("#h70-grid");
+    pixelGrid.addEventListener("contextmenu", (event) => {
+      // Only a genuine mouse right-click erases; keyboard context menus and
+      // touch long-presses keep their usual behavior.
+      if (event.button !== 2 || !this._gifEditing || !this._gifFrames.length) return;
+      const index = this._gifPixelAt(event.clientX, event.clientY);
+      if (index === null) return;
+      event.preventDefault();
+      this._eraseGifPixel(index);
+    });
     pixelGrid.addEventListener("pointerdown", (event) => {
       if (!this._gifEditing || !this._gifFrames.length || event.button > 0) return;
       const index = this._gifPixelAt(event.clientX, event.clientY);
@@ -655,15 +678,25 @@ class GoveeLedStudio extends HTMLElement {
     this._updateGifTools();
   }
 
-  _paintGifPixel(index) {
+  // Right-click is a one-pixel eraser, independent of the selected paint
+  // swatch and the persistent Gomme toggle. It has its own Undo checkpoint.
+  _eraseGifPixel(index) {
+    const frame = this._gifFrames?.[this._gifFrameIndex];
+    if (!this._gifEditing || !frame || !Number.isInteger(index) ||
+        index < 0 || index >= H70_PIXELS || frame.colors[index] === BLACK) return;
+    this._stopGif();
+    this._pushGifUndo();
+    this._paintGifPixel(index, BLACK);
+  }
+
+  _paintGifPixel(index, color = this._gifPaintColor()) {
     if (!this._gifEditing || !this._gifFrames[this._gifFrameIndex] ||
         !Number.isInteger(index) || index < 0 || index >= H70_PIXELS) return;
-    const color = this._gifPaintColor();
     const frame = this._gifFrames[this._gifFrameIndex];
     if (frame.colors[index] === color) return;
     frame.colors[index] = color;
     this._h70[index] = color;
-    const pixel = this.shadowRoot.querySelector("#h70-grid")?.children[index];
+    const pixel = this.shadowRoot?.querySelector("#h70-grid")?.children?.[index];
     if (pixel) pixel.style.setProperty("--pixel", color);
     this._markGifEdited();
     this._drawGifThumbnail(this._gifFrameIndex);
@@ -1667,7 +1700,7 @@ class GoveeLedStudio extends HTMLElement {
       }
       .matrix-shell { width:min(100%,420px); box-sizing:border-box; margin:auto; padding:12px; border-radius:15px; background:#030408; box-shadow:inset 0 0 30px rgba(0,0,0,.8), 0 20px 50px rgba(0,0,0,.22); }
       /* A distinct graphite background draws consistent grid lines between all 520 LEDs. */
-      .matrix { display:grid; grid-template-columns:repeat(20,1fr); gap:3px; aspect-ratio:20/26; padding:2px; box-sizing:border-box; border-radius:6px; background:#3b4252; }
+      .matrix { display:grid; grid-template-columns:repeat(20,1fr); gap:3px; aspect-ratio:20/26; padding:2px; box-sizing:border-box; border-radius:6px; background:#7857ff; }
       .matrix.gif-drawing { touch-action:none; } .matrix button { min-width:0; padding:0; border-radius:2px; background:var(--pixel); box-shadow:0 0 2px color-mix(in srgb, var(--pixel) 20%, transparent); }
       .matrix.selecting-area { cursor:crosshair; touch-action:none; }
       .matrix button.pixel-selected { background:linear-gradient(rgba(235,55,73,.18),rgba(235,55,73,.18)),var(--pixel); box-shadow:inset 0 0 0 2px rgba(255,105,122,.86); }

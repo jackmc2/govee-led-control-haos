@@ -552,8 +552,8 @@ console.log("LED Studio: structured animation/drawing/save controls and responsi
 // lit pixels, without changing the native 20 by 26 logical pixel resolution.
 {
   const css = new Studio()._styles();
-  assert.match(css, /\.matrix \{[^}]*grid-template-columns:repeat\(20,1fr\);[^}]*gap:3px;[^}]*aspect-ratio:20\/26;[^}]*background:#3b4252;/,
-    "graphite gaps separate every native matrix cell");
+  assert.match(css, /\.matrix \{[^}]*grid-template-columns:repeat\(20,1fr\);[^}]*gap:3px;[^}]*aspect-ratio:20\/26;[^}]*background:#7857ff;/,
+    "violet #7857ff gaps separate every native matrix cell");
   assert.match(css, /\.matrix button \{[^}]*background:var\(--pixel\);[^}]*box-shadow:0 0 2px/,
     "small soft glow keeps lit pixels discrete");
   assert.ok(studioSource.includes("const H70_WIDTH = 20;"));
@@ -791,3 +791,111 @@ console.log("LED Studio: 20x26 rectangular select, 4-way move, clipping, undo an
   assert.deepEqual({...studio._gifSelection},{left:18,right:19,top:3,bottom:3});
 }
 console.log("LED Studio: clip selected rectangles at all four edges, without wrap, with undo OK");
+
+
+// Editor swatches use precise, saturated RGB values instead of the earlier
+// pastel/neon intermediates. Choosing a swatch never alters saved artworks.
+{
+  const swatches = [...studioSource.matchAll(/\{ name: "([^"]+)", color: "(#[0-9a-f]{6})" \}/g)];
+  assert.equal(swatches.length, 12, "keep the compact 12-color palette");
+  const palette = new Map(swatches.map((match) => [match[1], match[2]]));
+  assert.equal(palette.get("Rouge"), "#ff0000", "red is exactly RGB(255,0,0)");
+  assert.equal(palette.get("Vert"), "#00ff00", "green is exactly RGB(0,255,0)");
+  assert.equal(palette.get("Bleu"), "#0000ff", "blue is exactly RGB(0,0,255)");
+  assert.equal(palette.get("Jaune"), "#ffff00");
+  assert.equal(palette.get("Cyan"), "#00ffff");
+  assert.equal(palette.get("Magenta"), "#ff00ff");
+  assert.equal(palette.get("Blanc"), "#ffffff");
+  assert.equal(palette.get("Noir"), "#000000");
+  for (const color of palette.values()) {
+    const channels = [1,3,5].map((i) => parseInt(color.slice(i,i+2), 16));
+    assert.ok(channels.every((channel) => channel === 0 || channel === 128 || channel === 255),
+      color + " must use only saturated primary channels or one 128 intermediate");
+  }
+  assert.match(studioSource, /this\._selectedColor \|\|= "#ff0000"/);
+  assert.match(studioSource, /aria-label="\$\{name\}"/,
+    "named swatches are accessible to screen readers");
+}
+
+// A desktop right click must erase only the pointed pixel, regardless of
+// palette selection / persistent Gomme state, with an independent Undo state.
+{
+  const {studio, calls, get} = fixture();
+  const handlers = new Map();
+  const eventsFor = (selector) => {
+    if (!handlers.has(selector)) handlers.set(selector, new Map());
+    return handlers.get(selector);
+  };
+  studio.shadowRoot = {
+    querySelector(selector) {
+      const node = get(selector);
+      node.addEventListener = (type, handler) => eventsFor(selector).set(type, handler);
+      if (selector === "#h70-grid") {
+        node.getBoundingClientRect = () => ({
+          left:0,top:0,right:200,bottom:260,width:200,height:260,
+        });
+      }
+      return node;
+    },
+    querySelectorAll() { return []; },
+  };
+  studio._selectedColor = "#0000ff";
+  studio._gifEraser = false;
+  studio._editorKind = "animation";
+  studio._gifFrames = [
+    {colors:Array(520).fill("#000000"),duration:120},
+    {colors:Array(520).fill("#00ff00"),duration:280},
+  ];
+  studio._gifFrames[0].colors[21]="#ff0000";
+  studio._gifFrames[0].colors[22]="#ff00ff";
+  studio._h70=[...studio._gifFrames[0].colors];
+  let stopCalls=0;
+  studio._stopGif=()=>{stopCalls++;};
+  studio._bindEvents();
+
+  const contextmenu=eventsFor("#h70-grid").get("contextmenu");
+  assert.equal(typeof contextmenu,"function","matrix registers a native context-menu handler");
+  let prevented=0;
+  const rightClick=(x,y,button=2)=>contextmenu({
+    button, clientX:x,clientY:y, preventDefault(){prevented++;},
+  });
+  // Pixel (1,1) = index 21, using the real matrix hit-test.
+  rightClick(15,15);
+  assert.equal(prevented,1,"right click on a pixel suppresses browser menu");
+  assert.equal(studio._gifFrames[0].colors[21],"#000000");
+  assert.equal(studio._h70[21],"#000000");
+  assert.equal(studio._gifFrames[0].colors[22],"#ff00ff","other pixels remain untouched");
+  assert.equal(studio._gifFrames[1].colors[21],"#00ff00","other GIF frames remain untouched");
+  assert.equal(studio._gifFrames[0].duration,120);
+  assert.equal(studio._gifUndo.length,1);
+  assert.equal(studio._selectedColor,"#0000ff","selected swatch is unchanged");
+  assert.equal(studio._gifEraser,false,"persistent eraser stays off");
+  assert.equal(stopCalls,1);
+  assert.equal(calls.length,0,"no command sent to Home Assistant");
+
+  rightClick(15,15);
+  assert.equal(studio._gifUndo.length,1,"erasing black again is a no-op");
+  rightClick(15,15,0);
+  assert.equal(studio._gifUndo.length,1,"normal context menu event is ignored");
+  rightClick(215,15);
+  assert.equal(studio._gifUndo.length,1,"right click outside the grid is ignored");
+  assert.equal(prevented,2,"only right-clicks inside active matrix suppress the menu");
+
+  studio._undoGifEdit();
+  assert.equal(studio._gifFrames[0].colors[21],"#ff0000","undo restores RGB exactly");
+  assert.equal(studio._gifFrames[1].colors[21],"#00ff00");
+
+  studio._gifSelectMode=true;
+  studio._gifSelection={left:1,right:3,top:1,bottom:2};
+  rightClick(25,15); // Pixel (2,1) = index 22
+  assert.equal(studio._gifFrames[0].colors[22],"#000000",
+    "right click is also available while rectangular selection is active");
+  assert.deepEqual({...studio._gifSelection},{left:1,right:3,top:1,bottom:2});
+  studio._undoGifEdit();
+  assert.equal(studio._gifFrames[0].colors[22],"#ff00ff");
+  studio._gifEditing=false;
+  const history=studio._gifUndo.length;
+  rightClick(15,15);
+  assert.equal(studio._gifUndo.length,history,"not editing means no erase");
+}
+console.log("LED Studio: saturated RGB swatches, right-click eraser and Undo OK");
