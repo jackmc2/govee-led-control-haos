@@ -12,7 +12,16 @@ const sandbox = {
     define: (name, classType) => classes.set(name, classType),
   },
   btoa: (binary) => Buffer.from(binary, "binary").toString("base64"),
+  document: { hidden: false },
 };
+const timers = new Map();
+let nextTimerId = 0;
+sandbox.setTimeout = (callback, delay) => {
+  const id = ++nextTimerId;
+  timers.set(id, { callback, delay });
+  return id;
+};
+sandbox.clearTimeout = (id) => timers.delete(id);
 runInNewContext(
   readFileSync("custom_components/govee_led_control/frontend/govee-led-player.js", "utf8"),
   sandbox
@@ -305,4 +314,79 @@ console.log("LED Player: static H70B3 image, native GIF, H6069 image OK");
   instance._renderItems();
   assert.match(list.innerHTML, /Chat/);
   assert.doesNotMatch(list.innerHTML, /Ange|Boule|Dino/);
+}
+
+
+// The gallery shows animated GIF thumbnails with an overlay badge and
+// category chip, never a redundant "GIF · N images · H70B3" metadata row.
+{
+  const { instance } = fixture({ id:"a", name:"Bonhomme de neige", kind:"animation",
+    target:"h70b3", category:"Noël", frames:[frameA,frameB] });
+  instance._items.push({ id:"b", name:"Cadeau", kind:"art",
+    target:"h70b3", category:"Fêtes", colors });
+  instance._filter = "all";
+  instance._categoryFilter = "all";
+  const thumbnails = [];
+  const list = {
+    innerHTML: "",
+    querySelectorAll(selector) {
+      if (selector === "[data-thumb]") return thumbnails;
+      return [];
+    },
+  };
+  const root = {
+    getElementById: () => list,
+    querySelectorAll: () => [],
+  };
+  instance.shadowRoot = root;
+  instance._paintCanvas = () => {};
+  instance._renderItems();
+  assert.equal((list.innerHTML.match(/class="thumb-gif-badge"/g) || []).length, 1);
+  assert.match(list.innerHTML, /<span class="thumb-gif-badge">GIF<\/span>/);
+  assert.match(list.innerHTML, /<strong>Bonhomme de neige<\/strong><span class="category-tag" title="Noël">Noël<\/span>/);
+  assert.match(list.innerHTML, /<strong>Cadeau<\/strong><span class="category-tag" title="Fêtes">Fêtes<\/span>/);
+  assert.doesNotMatch(list.innerHTML, /GIF · [0-9]+ images · H70B3/);
+  assert.doesNotMatch(list.innerHTML, /class="item-meta"[^]*?<small>/);
+  assert.match(source, /\.thumb-gif-badge \{[^"]*position:absolute/);
+  assert.match(source, /\.category-tag \{[^"]*border:1px solid/);
+}
+
+// Playing gallery thumbnails is a local-only timer, independent from the
+// selected (full-size) preview and the native BLE upload.
+{
+  const { instance, calls } = fixture({ id:"gif", name:"Sapin", kind:"animation",
+    target:"h70b3", category:"Noël", frames:[frameA,frameB] });
+  const gifCanvas = { dataset:{ thumb:"gif" } };
+  const staticCanvas = { dataset:{ thumb:"still" } };
+  const list = {
+    querySelectorAll: () => [gifCanvas, staticCanvas],
+  };
+  const still = { id:"still", name:"Cadeau", kind:"art", target:"h70b3", colors };
+  const painted = [];
+  instance._paintCanvas = (canvas, pixels, target) => painted.push({canvas,pixels,target});
+  instance.isConnected = true;
+  instance._startThumbnailPreviews(list, [instance._items[0],still]);
+  assert.equal(instance._thumbnailState.size, 1);
+  assert.equal(timers.size, 1);
+  instance._thumbnailState.get("gif").due = 0;
+  const [scheduledId, scheduledTick] = [...timers.entries()][0];
+  timers.delete(scheduledId); // Simulate the browser consuming that timeout.
+  scheduledTick.callback();
+  assert.equal(timers.size, 1);
+  assert.equal(painted.length, 1);
+  assert.equal(painted[0].canvas, gifCanvas);
+  assert.equal(painted[0].pixels, frameB.colors);
+  assert.equal(instance._thumbnailState.get("gif").index, 1);
+  assert.equal(calls.length, 0, "thumbnail animation must not contact the rideau");
+  sandbox.document.hidden = true;
+  instance._clearThumbnailTimer();
+  assert.equal(timers.size, 0);
+  sandbox.document.hidden = false;
+  instance._resumeThumbnailPreviews();
+  assert.equal(timers.size, 1);
+  instance.disconnectedCallback = Player.prototype.disconnectedCallback;
+  // The original disconnected handler would remove the visibility listener.
+  sandbox.document.removeEventListener = () => {};
+  instance.disconnectedCallback();
+  assert.equal(timers.size, 0, "unmount stops the thumbnail loop");
 }

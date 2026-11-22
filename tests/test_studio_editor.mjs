@@ -369,9 +369,9 @@ console.log("LED Studio: unified image/GIF editor, import, save, native upload a
   studio._renderGallery();
   const html = get("#gallery-list").innerHTML;
   assert.equal((html.match(/class="gallery-item"/g) || []).length, 3);
-  assert.match(html, /Catégorie : Noël/);
-  assert.match(html, /Catégorie : Fêtes/);
-  assert.match(html, /Catégorie : Non classé/);
+  assert.match(html, /class="gallery-category" title="Catégorie : Noël">Noël<\/span>/);
+  assert.match(html, /class="gallery-category" title="Catégorie : Fêtes">Fêtes<\/span>/);
+  assert.match(html, /class="gallery-category" title="Catégorie : Non classé">Non classé<\/span>/);
   assert.match(html, /GIF animé · 1 images/);
   assert.equal((html.match(/class="gallery-actions"/g) || []).length, 3);
   assert.equal((html.match(/data-gallery-load=/g) || []).length, 3);
