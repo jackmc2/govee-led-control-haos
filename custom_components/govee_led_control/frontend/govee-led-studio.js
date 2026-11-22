@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.5.15-shift-reorder";
+const CARD_VERSION = "0.5.16-editor-ux";
 const H70_WIDTH = 20;
 const H70_HEIGHT = 26;
 const H70_PIXELS = H70_WIDTH * H70_HEIGHT;
@@ -241,38 +241,60 @@ class GoveeLedStudio extends HTMLElement {
                   <strong id="editor-title">Éditeur d'image</strong>
                   <span id="gif-frame-counter">Image fixe · 20 × 26</span>
                 </div>
-                <div class="gif-editor-toolbar">
-                  <button class="gif-animation-only" id="gif-prev" title="Image précédente" type="button">◀</button>
-                  <button class="gif-animation-only gif-preview-play" id="gif-preview-play" title="Lire les images dans l’éditeur uniquement" type="button">▶ Lire</button>
-                  <button class="gif-animation-only" id="gif-next" title="Image suivante" type="button">▶</button>
-                  <label class="gif-animation-only">Durée <input id="gif-frame-duration" type="number" min="100" max="2000" step="10" value="150"> ms</label>
-                  <button id="gif-undo" title="Annuler" type="button" disabled>↶ Annuler</button>
-                  <button id="gif-erase" title="Peindre en noir" type="button">⌫ Gomme</button>
-                </div>
-                <div class="gif-pixel-shift" aria-label="Déplacer le dessin dans l'image">
-                  <span>Décaler le dessin (1 pixel)</span>
-                  <button id="gif-shift-left" type="button" title="Décaler les pixels d'une colonne vers la gauche" aria-label="Décaler le dessin à gauche">←</button>
-                  <button id="gif-shift-right" type="button" title="Décaler les pixels d'une colonne vers la droite" aria-label="Décaler le dessin à droite">→</button>
-                </div>
-                <input id="gif-frame-range" class="gif-animation-only" aria-label="Numéro d'image du GIF" type="range" min="1" max="1" value="1">
-                <div class="gif-filmstrip gif-animation-only" id="gif-filmstrip" aria-label="Images du GIF"></div>
-                <div class="gif-editor-actions gif-animation-only">
-                  <button id="gif-move-earlier" title="Reculer l'image sélectionnée dans l'ordre du GIF" type="button">← Reculer l'image</button>
-                  <button id="gif-move-later" title="Avancer l'image sélectionnée dans l'ordre du GIF" type="button">Avancer l'image →</button>
-                  <button id="gif-duplicate" type="button">+ Ajouter une image</button>
-                  <button id="gif-delete" type="button">− Supprimer</button>
-                  <button id="gif-clear-frame" type="button">Effacer l'image</button>
-                </div>
-                <button class="gif-clear-still" id="gif-clear-still" type="button">Effacer l'image</button>
-                <div class="gif-editor-save">
-                  <input id="gif-editor-name" maxlength="64" placeholder="Nom de la création" aria-label="Nom de la création">
-                  <label class="category-editor-label" for="gif-editor-category">Catégorie
-                    <input id="gif-editor-category" maxlength="40" list="govee-category-list" placeholder="Non classé" autocomplete="off">
-                    <datalist id="govee-category-list"></datalist>
-                  </label>
-                  <button id="gif-editor-save" class="primary" type="button">Enregistrer l’image</button>
-                </div>
-                <small>Cliquez ou glissez sur les pixels pour dessiner. Image fixe et GIF utilisent les mêmes outils. Les modifications restent locales jusqu’à l’enregistrement ou l’envoi.</small>
+
+                <section class="gif-editor-block gif-timeline gif-animation-only" aria-label="Lecture et chronologie du GIF">
+                  <div class="gif-block-heading"><span>ANIMATION</span><small>Lecture et durée</small></div>
+                  <div class="gif-editor-toolbar">
+                    <button id="gif-prev" title="Image précédente" aria-label="Image précédente" type="button">◀</button>
+                    <button class="gif-preview-play" id="gif-preview-play" title="Lire les images dans l’éditeur uniquement" type="button">▶ Lire</button>
+                    <button id="gif-next" title="Image suivante" aria-label="Image suivante" type="button">▶</button>
+                    <label class="gif-frame-timing">Durée <input id="gif-frame-duration" type="number" min="100" max="2000" step="10" value="150"> ms</label>
+                  </div>
+                  <input id="gif-frame-range" aria-label="Numéro d'image du GIF" type="range" min="1" max="1" value="1">
+                  <div class="gif-filmstrip" id="gif-filmstrip" aria-label="Images du GIF"></div>
+                  <div class="gif-block-heading gif-block-heading-sub"><span>ORDRE DES IMAGES</span></div>
+                  <div class="gif-order-actions">
+                    <button id="gif-move-earlier" title="Reculer l'image sélectionnée dans l'ordre du GIF" type="button">← Reculer</button>
+                    <button id="gif-move-later" title="Avancer l'image sélectionnée dans l'ordre du GIF" type="button">Avancer →</button>
+                  </div>
+                  <div class="gif-editor-actions">
+                    <button id="gif-duplicate" type="button">+ Ajouter une image</button>
+                    <button id="gif-delete" title="Supprimer l'image sélectionnée du GIF" type="button">− Supprimer l'image</button>
+                  </div>
+                </section>
+
+                <section class="gif-editor-block gif-drawing-tools" aria-label="Outils de dessin">
+                  <div class="gif-block-heading"><span>DESSIN</span><small>Image sélectionnée · 20 × 26</small></div>
+                  <div class="gif-pixel-shift" aria-label="Déplacer le dessin dans l'image">
+                    <span>Décalage horizontal · 1 pixel</span>
+                    <div class="gif-shift-buttons">
+                      <button id="gif-shift-left" type="button" title="Décaler les pixels d'une colonne vers la gauche" aria-label="Décaler le dessin à gauche">←</button>
+                      <button id="gif-shift-right" type="button" title="Décaler les pixels d'une colonne vers la droite" aria-label="Décaler le dessin à droite">→</button>
+                    </div>
+                  </div>
+                  <div class="gif-retouch-actions">
+                    <button id="gif-undo" title="Annuler" type="button" disabled>↶ Annuler</button>
+                    <button id="gif-erase" title="Peindre en noir" type="button">⌫ Gomme</button>
+                    <button id="gif-clear-frame" class="gif-animation-only" type="button">Effacer l'image</button>
+                    <button id="gif-clear-still" class="gif-clear-still" type="button">Effacer l'image</button>
+                  </div>
+                </section>
+
+                <section class="gif-editor-block gif-editor-save-block" aria-label="Enregistrement de la création">
+                  <div class="gif-block-heading"><span>ENREGISTRER</span></div>
+                  <div class="gif-editor-save">
+                    <label class="gif-name-label" for="gif-editor-name">Nom
+                      <input id="gif-editor-name" maxlength="64" placeholder="Nom de la création" aria-label="Nom de la création">
+                    </label>
+                    <label class="category-editor-label" for="gif-editor-category">Catégorie
+                      <input id="gif-editor-category" maxlength="40" list="govee-category-list" placeholder="Non classé" autocomplete="off">
+                      <datalist id="govee-category-list"></datalist>
+                    </label>
+                    <button id="gif-editor-save" class="primary" type="button">Enregistrer l’image</button>
+                  </div>
+                </section>
+
+                <small class="gif-editor-help">Dessinez directement sur la matrice. Les modifications restent locales jusqu'à l'enregistrement ou l'envoi.</small>
               </div>
               <div class="matrix-shell"><div id="h70-grid" class="matrix"></div></div>
             </div>
@@ -1398,36 +1420,50 @@ class GoveeLedStudio extends HTMLElement {
       .gif-editor[hidden] { display:none !important; }
       .gif-animation-only[hidden] { display:none !important; }
       .gif-editor.is-still .gif-animation-only { display:none !important; }
-      .gif-editor { background:rgba(120,87,255,.075); border:1px solid rgba(148,122,255,.26); border-radius:14px; padding:13px; display:grid; gap:11px; }
-      .gif-editor-head { display:flex; justify-content:space-between; gap:8px; font-size:13px; align-items:center; }
+      .gif-editor { min-width:0; background:rgba(120,87,255,.055); border:1px solid rgba(148,122,255,.26); border-radius:14px; padding:14px; display:grid; gap:0; }
+      .gif-editor-head { display:flex; flex-wrap:wrap; justify-content:space-between; gap:7px 12px; font-size:13px; align-items:center; padding-bottom:13px; }
       .gif-editor-head strong { color:#f4f0ff; }
       .gif-editor-head span { color:#b3a5ff; font-variant-numeric:tabular-nums; font-size:12px; }
-      .gif-editor-toolbar { display:flex; flex-wrap:wrap; gap:7px; align-items:center; }
-      .gif-editor-toolbar button,.gif-editor-actions button,.gif-pixel-shift button { padding:7px 10px; font-size:12px; }
-      .gif-pixel-shift { display:flex; flex-wrap:wrap; align-items:center; gap:7px; }
-      .gif-pixel-shift span { font-size:12px; color:#b3a5ff; }
-      .gif-pixel-shift button { min-width:38px; background:rgba(120,87,255,.19); border:1px solid rgba(148,122,255,.34); }
-      .gif-editor-toolbar label { display:flex; align-items:center; gap:5px; }
-      .gif-editor-toolbar input[type=number] { box-sizing:border-box; width:64px; border:1px solid rgba(255,255,255,.2); color:white; background:#212536; padding:6px; border-radius:7px; }
-      .gif-editor-toolbar button.active { background:#5f4dca; color:white; }
-      .gif-editor-toolbar .gif-preview-play { background:rgba(120,87,255,.27); border:1px solid rgba(161,137,255,.55); min-width:83px; font-weight:700; }
+      .gif-editor-block { min-width:0; display:grid; gap:10px; padding:13px 0; border-top:1px solid rgba(174,158,255,.16); }
+      .gif-block-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px 10px; color:#b4a4ff; font-size:10px; letter-spacing:.11em; font-weight:800; }
+      .gif-block-heading small { font-size:10px; font-weight:500; letter-spacing:0; color:#8f96ae; }
+      .gif-block-heading-sub { padding-top:4px; }
+      .gif-editor-toolbar { display:grid; grid-template-columns:36px minmax(70px,1fr) 36px auto; align-items:center; gap:7px; }
+      .gif-editor-toolbar button,.gif-order-actions button,.gif-editor-actions button,.gif-retouch-actions button,.gif-pixel-shift button { padding:8px; font-size:12px; min-height:36px; }
+      .gif-editor-toolbar .gif-frame-timing { display:flex; align-items:center; justify-content:end; gap:5px; white-space:nowrap; }
+      .gif-editor-toolbar input[type=number] { box-sizing:border-box; width:58px; border:1px solid rgba(255,255,255,.2); color:white; background:#212536; padding:6px; border-radius:7px; text-align:center; }
+      .gif-editor-toolbar button.active,.gif-retouch-actions button.active { background:#5f4dca; color:white; }
+      .gif-editor-toolbar .gif-preview-play { background:rgba(120,87,255,.27); border:1px solid rgba(161,137,255,.55); min-width:0; font-weight:700; }
       .gif-editor-toolbar .gif-preview-play.active { background:#7857ff; color:white; }
-      #gif-frame-range { width:100%; accent-color:var(--accent); }
-      .gif-filmstrip { display:flex; gap:6px; min-width:0; overflow-x:auto; padding:2px 0 7px; }
+      #gif-frame-range { box-sizing:border-box; width:100%; accent-color:var(--accent); margin:2px 0; }
+      .gif-filmstrip { display:flex; gap:6px; min-width:0; overflow-x:auto; padding:2px 0 8px; scrollbar-color:rgba(148,122,255,.5) transparent; }
       .gif-frame { display:grid; flex:none; gap:2px; place-items:center; padding:5px; border-radius:8px; background:#111420; border:1px solid rgba(255,255,255,.08); }
       .gif-frame canvas { width:30px; height:39px; background:black; image-rendering:pixelated; }
       .gif-frame span { font-size:10px; color:#a0a8b6; }
       .gif-frame.active { border-color:#8c77ff; background:rgba(126,99,255,.26); }
-      .gif-editor-actions { display:flex; flex-wrap:wrap; gap:6px; }
-      .gif-clear-still { justify-self:start; font-size:12px; padding:7px 12px; }
-      .gif-editor:not(.is-still) .gif-clear-still { display:none; }
-      .gif-editor-save { display:grid; grid-template-columns:minmax(100px,1fr) auto; gap:7px; }
+      .gif-order-actions,.gif-editor-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+      .gif-order-actions button { border:1px solid rgba(148,122,255,.24); background:rgba(120,87,255,.12); }
+      .gif-pixel-shift { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+      .gif-pixel-shift span { font-size:12px; color:#bdc1d4; }
+      .gif-shift-buttons { display:flex; gap:7px; }
+      .gif-shift-buttons button { min-width:43px; background:rgba(120,87,255,.19); border:1px solid rgba(148,122,255,.34); font-size:17px; }
+      .gif-retouch-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
+      .gif-retouch-actions button { min-width:0; }
+      .gif-retouch-actions #gif-clear-frame,.gif-retouch-actions #gif-clear-still { color:#ffb1bb; }
+      .gif-editor:not(.is-still) .gif-clear-still { display:none !important; }
+      .gif-editor-save { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:9px; align-items:end; }
       .gif-editor-save input { min-width:0; width:100%; box-sizing:border-box; border:1px solid rgba(255,255,255,.14); background:#222532; color:white; border-radius:8px; padding:9px; }
-      .gif-editor-save #gif-editor-name { grid-column:1/-1; }
-      .gif-editor-save .category-editor-label { display:grid; min-width:0; gap:5px; color:#b8c0d4; font-size:12px; }
+      .gif-editor-save .gif-name-label { grid-column:1/-1; }
+      .gif-editor-save .gif-name-label,.gif-editor-save .category-editor-label { display:grid; min-width:0; gap:6px; color:#b8c0d4; font-size:12px; }
       .gif-editor-save #gif-editor-save { align-self:end; min-height:38px; }
       .gif-editor-save .primary { margin:0; width:auto; font-size:12px; }
       .gif-editor small { color:#a0a8b6; font-size:11px; line-height:1.45; }
+      .gif-editor .gif-editor-help { margin-top:2px; padding-top:11px; border-top:1px solid rgba(174,158,255,.13); color:#929ab0; }
+      @container(max-width:440px) {
+        .gif-editor-toolbar { grid-template-columns:36px minmax(0,1fr) 36px; }
+        .gif-editor-toolbar .gif-frame-timing { grid-column:1/-1; justify-content:start; }
+        .gif-retouch-actions { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      }
       .matrix-shell { width:min(100%,420px); box-sizing:border-box; margin:auto; padding:12px; border-radius:15px; background:#030408; box-shadow:inset 0 0 30px rgba(0,0,0,.8), 0 20px 50px rgba(0,0,0,.22); }
       .matrix { display:grid; grid-template-columns:repeat(20,1fr); gap:3px; aspect-ratio:20/26; }
       .matrix.gif-drawing { touch-action:none; } .matrix button { min-width:0; padding:0; border-radius:3px; background:var(--pixel); box-shadow:0 0 5px color-mix(in srgb, var(--pixel) 70%, transparent); }
