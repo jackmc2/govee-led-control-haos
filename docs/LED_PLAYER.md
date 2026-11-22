@@ -87,7 +87,16 @@ Ce classement s'applique à la galerie complète et aux filtres **Tout / Images 
 ## Catégories personnalisées (0.5.10)
 
 - Dans **LED Studio**, le champ **Catégorie** est disponible dans l'éditeur pour chaque image et GIF. Saisissez un nom libre (40 caractères maximum) ou reprenez une catégorie suggérée depuis les créations existantes.
-- Les créations déjà sauvegardées restent présentes et apparaissent sous **Sans catégorie** ; il suffit de les ouvrir avec **Modifier**, choisir une catégorie puis **Enregistrer**.
-- Dans **LED Player**, la liste **Catégorie** propose **Toutes les catégories**, **Sans catégorie** et les catégories présentes dans la galerie. Elle fonctionne en combinaison avec les filtres **Tout / Images / GIF**.
+- Les créations déjà sauvegardées restent présentes et apparaissent sous **Non classé** ; il suffit de les ouvrir avec **Modifier**, choisir une catégorie puis **Enregistrer**.
+- Dans **LED Player**, la liste **Catégorie** propose **Toutes les catégories**, **Non classé** et les catégories présentes dans la galerie. Elle fonctionne en combinaison avec les filtres **Tout / Images / GIF**.
 - L'ordre alphabétique est conservé dans chaque catégorie. Le filtre n'affecte jamais l'image ou le GIF actuellement affiché sur le rideau ; il modifie seulement la sélection de la galerie dans le navigateur.
 - Les catégories sont enregistrées avec les créations dans le stockage Home Assistant existant : aucune migration, suppression ou nouvelle entité n'est nécessaire.
+
+## Gestion centralisée des catégories (0.5.11)
+
+Dans **LED Studio → Galerie → Gérer les catégories**, utilisez **+ Créer**, **Renommer** et **Supprimer**.
+Les catégories ont leur propre liste persistante : une catégorie créée reste disponible même avant l'ajout d'un motif ou après la suppression de son dernier motif.
+Le renommage met à jour **toutes les images et tous les GIF** concernés. La suppression ne supprime **aucun fichier** : les créations sont simplement déplacées vers **Non classé**.
+La gestion se fait dans Home Assistant via la commande WebSocket `govee_led_control/gallery/category/manage`, sans modifier les données des pixels ni leur luminosité. Les anciennes galeries sont prises en charge automatiquement.
+
+**Mise à jour :** installer le dossier complet en 0.5.11, redémarrer Home Assistant pour enregistrer la nouvelle commande WebSocket, puis actualiser le navigateur (Ctrl+F5).
