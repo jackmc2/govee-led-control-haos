@@ -304,3 +304,48 @@ console.log("LED Studio: unified image/GIF editor, import, save, native upload a
   studio._openGalleryItem("old");
   assert.equal(get("#gif-editor-category").value, "");
 }
+
+// Category management is independent from individual artwork editing.
+{
+  const { studio, calls, get } = fixture();
+  studio._galleryCategories = ["Halloween", "Noël"];
+  studio._galleryItems = [
+    { id: "one", category: "Noël", kind: "art" },
+    { id: "two", category: "Noël", kind: "animation" },
+  ];
+  const select = get("#manage-category");
+  studio._renderCategoryManager();
+  assert.match(select.innerHTML, /Halloween/);
+  assert.match(select.innerHTML, /Noël/);
+  const suggestionList = get("#govee-category-list");
+  studio._updateCategorySuggestions();
+  assert.match(suggestionList.innerHTML, /Halloween/, "empty category still suggested");
+
+  select.value = "Noël";
+  get("#gif-editor-category").value = "Noël";
+  sandbox.window.prompt = () => "Fêtes";
+  studio._loadGallery = async () => { studio._galleryCategories = ["Halloween", "Fêtes"]; };
+  await studio._manageCategory("rename");
+  const rename = calls.find((call) => call.ws?.action === "rename");
+  assert.equal(rename.ws.type, "govee_led_control/gallery/category/manage");
+  assert.equal(rename.ws.name, "Noël");
+  assert.equal(rename.ws.new_name, "Fêtes");
+  assert.equal(get("#gif-editor-category").value, "Fêtes");
+  assert.equal(select.value, "Fêtes");
+
+  sandbox.window.prompt = () => "Hiver";
+  studio._loadGallery = async () => { studio._galleryCategories.push("Hiver"); };
+  await studio._manageCategory("create");
+  const created = calls.find((call) => call.ws?.action === "create");
+  assert.equal(created.ws.name, "Hiver");
+
+  select.value = "Fêtes";
+  get("#gif-editor-category").value = "Fêtes";
+  studio._loadGallery = async () => { studio._galleryCategories = ["Halloween", "Hiver"]; };
+  await studio._manageCategory("delete");
+  const deleted = calls.find((call) => call.ws?.action === "delete");
+  assert.equal(deleted.ws.name, "Fêtes");
+  assert.equal(get("#gif-editor-category").value, "");
+  assert.equal(select.value, "");
+  assert.match(studio.testStatus.message, /conservés/);
+}
