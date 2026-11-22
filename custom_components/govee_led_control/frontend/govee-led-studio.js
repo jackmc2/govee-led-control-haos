@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.5.17-matrix-contrast";
+const CARD_VERSION = "0.5.18-three-column-studio";
 const H70_WIDTH = 20;
 const H70_HEIGHT = 26;
 const H70_PIXELS = H70_WIDTH * H70_HEIGHT;
@@ -585,7 +585,9 @@ class GoveeLedStudio extends HTMLElement {
   }
 
   _focusEditor() {
-    this.shadowRoot?.querySelector("#editor-stage")?.scrollIntoView?.({
+    // #editor-stage becomes display:contents in the wide three-column view.
+    // Scroll to the actual tool panel, which keeps a layout box in every mode.
+    this.shadowRoot?.querySelector("#gif-editor")?.scrollIntoView?.({
       behavior: "smooth", block: "start",
     });
   }
@@ -599,6 +601,7 @@ class GoveeLedStudio extends HTMLElement {
     root.querySelector("#editor-toolbar").hidden = !active;
     root.querySelector("#editor-stage").hidden = !active;
     root.querySelector("#curtain").classList.toggle("editor-active", active);
+    root.querySelector(".studio-workspace")?.classList.toggle("is-editing", active);
     editor.hidden = !active;
     editor.classList.toggle("is-still", active && !animation);
     root.querySelectorAll(".gif-animation-only").forEach((element) => {
@@ -1525,6 +1528,43 @@ class GoveeLedStudio extends HTMLElement {
       @container (min-width:1580px) {
         .stage { grid-template-columns:minmax(0,1fr) minmax(190px,240px); gap:18px; }
         .matrix-shell { max-width:420px; }
+      }
+      /* Desktop: tools left, the 520-LED canvas center, gallery right.
+         The gallery remains a sibling of the workspace, not a nested tool.
+         Below 1120px the existing two-column/stacked layouts are preserved. */
+      @container (min-width:1120px) {
+        .studio-columns { display:grid; grid-template-columns:minmax(0,2.22fr) minmax(285px,.88fr); align-items:start; }
+        .studio-workspace {
+          display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);
+          gap:12px; align-content:start; align-items:start;
+          padding:18px 14px 22px; min-width:0;
+        }
+        .studio-workspace > .toolbar {
+          grid-column:1; grid-row:1; min-width:0; padding:12px;
+          grid-template-columns:auto minmax(0,1fr); border-radius:12px;
+          border:1px solid rgba(255,255,255,.09);
+        }
+        .studio-workspace > .toolbar .range-control { grid-column:1/-1; }
+        .studio-workspace > .view { display:contents; }
+        .studio-workspace .stage:not([hidden]) { display:contents; }
+        .studio-workspace .matrix-editor-area { display:contents; }
+        .studio-workspace .gif-editor { grid-column:1; grid-row:2; min-width:0; }
+        .studio-workspace .side-panel { grid-column:1; grid-row:3; min-width:0; }
+        .studio-workspace .gif-panel {
+          grid-column:1; grid-row:4; min-width:0; margin:0; padding:15px;
+          grid-template-columns:minmax(0,1fr); gap:12px;
+        }
+        .studio-workspace .gif-panel .gif-controls { grid-template-columns:minmax(0,1fr); }
+        .studio-workspace .matrix-shell {
+          grid-column:2; grid-row:1 / span 4; align-self:start;
+          width:min(100%,460px); max-width:none; min-width:0; margin:0 auto;
+        }
+        .studio-workspace:not(.is-editing) .gif-panel { grid-column:1/-1; grid-row:1; }
+        .gallery-panel { grid-column:2; min-width:0; border-left:1px solid rgba(255,255,255,.1); padding:22px 16px 28px; }
+        .gallery-list { grid-template-columns:repeat(2,minmax(0,1fr)); }
+        .gif-editor-toolbar { grid-template-columns:36px minmax(0,1fr) 36px; }
+        .gif-editor-toolbar .gif-frame-timing { grid-column:1/-1; justify-content:start; }
+        .gif-retouch-actions { grid-template-columns:repeat(2,minmax(0,1fr)); }
       }
       @container(max-width:720px) { header { padding:20px; } .toolbar { grid-template-columns:1fr; padding:16px 20px; } .stage,.gif-panel { grid-template-columns:1fr; } .view { padding:20px; } .gif-controls { grid-template-columns:1fr; } .status { display:none; } }
       @container(max-width:420px) { .gallery-list { grid-template-columns:minmax(0,1fr); } .gallery-item { grid-template-columns:70px minmax(0,1fr); } .gallery-preview { width:70px; height:92px; } .gallery-preview canvas { max-width:58px; } }

@@ -560,3 +560,38 @@ console.log("LED Studio: structured animation/drawing/save controls and responsi
   assert.ok(studioSource.includes("const H70_HEIGHT = 26;"));
 }
 console.log("LED Studio: pixel separation contrast and native 20x26 geometry OK");
+
+
+// Desktop three-zone layout must place editing controls on the left, the
+// physical 20x26 pixel canvas in the middle, and the gallery on the right.
+{
+  const src = studioSource;
+  const css = new Studio()._styles();
+  const wide = css.slice(css.indexOf('@container (min-width:1120px) {'));
+  assert.match(wide, /\.studio-columns \{ display:grid; grid-template-columns:minmax\(0,2\.22fr\) minmax\(285px,\.88fr\)/,
+    "wide outer grid allocates two internal columns plus the gallery");
+  assert.match(wide, /\.studio-workspace \{[\s\S]*?grid-template-columns:minmax\(0,1fr\) minmax\(0,1\.05fr\)/,
+    "the tools and the matrix have separate internal columns");
+  assert.match(wide, /\.studio-workspace \.gif-editor \{ grid-column:1; grid-row:2;/);
+  assert.match(wide, /\.studio-workspace \.side-panel \{ grid-column:1; grid-row:3;/);
+  assert.match(wide, /\.studio-workspace \.gif-panel \{[\s\S]*?grid-column:1; grid-row:4;/);
+  assert.match(wide, /\.studio-workspace \.matrix-shell \{[\s\S]*?grid-column:2; grid-row:1 \/ span 4;/);
+  assert.match(wide, /\.gallery-panel \{ grid-column:2;/,
+    "gallery stays to the right of the two-column editing workspace");
+  assert.match(wide, /\.studio-workspace:not\(\.is-editing\) \.gif-panel \{ grid-column:1\/-1; grid-row:1;/,
+    "import controls use full workspace width before editing");
+  assert.match(wide, /\.studio-workspace \.stage:not\(\[hidden\]\) \{ display:contents; \}/,
+    "hidden editor stage remains collapsed until artwork is selected");
+  assert.match(css, /@container \(min-width:940px\)/,
+    "old medium-width desktop layout is preserved");
+  assert.match(css, /@container\(max-width:720px\)/,
+    "mobile fallback is preserved");
+  assert.match(src, /querySelector\("\.studio-workspace"\)\?\.classList\.toggle\("is-editing", active\)/);
+  assert.match(src, /_focusEditor\(\) \{[\s\S]*?querySelector\("#gif-editor"\)\?\.scrollIntoView/,
+    "focus scrolls to an element with a layout box even when the stage uses display:contents");
+  for (const id of ["h70-grid", "gif-editor", "editor-toolbar", "editor-stage", "gallery-list",
+    "gif-shift-left", "gif-shift-right", "gif-move-earlier", "gif-move-later"]) {
+    assert.equal(src.split('id="' + id + '"').length - 1, 1, id + " must remain unique");
+  }
+}
+console.log("LED Studio: browser three-zone layout, responsive fallback, hidden state and controls OK");
