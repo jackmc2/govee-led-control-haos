@@ -45,6 +45,8 @@ def load_gallery_class():
         "UTC": UTC,
         "uuid4": uuid4,
         "MAX_ITEMS": 50,
+        "MAX_CATEGORIES": 100,
+        "validate_gallery_category": lambda value: value.strip() if isinstance(value, str) else "",
         "validate_gallery_item": lambda item: {k:v for k,v in item.items() if k != "id"},
     }
     exec(compile(module, str(SOURCE), "exec"), ns)
