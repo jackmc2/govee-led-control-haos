@@ -175,17 +175,22 @@ class GoveeLedPlayer extends HTMLElement {
       void this._refreshPower();
     }
     this._onPageHidden ||= () => {
-      if (document.hidden) this._clearPreviewTimer();
-      else {
+      if (document.hidden) {
+        this._clearPreviewTimer();
+        this._clearThumbnailTimer();
+      } else {
         this._drawPreview();
+        this._resumeThumbnailPreviews();
         void this._refreshPower();
       }
     };
     document.addEventListener("visibilitychange", this._onPageHidden);
+    this._resumeThumbnailPreviews();
   }
 
   disconnectedCallback() {
     this._clearPreviewTimer();
+    this._clearThumbnailTimer();
     document.removeEventListener("visibilitychange", this._onPageHidden);
   }
 
@@ -209,12 +214,14 @@ class GoveeLedPlayer extends HTMLElement {
       ".category-bar { display:flex; align-items:center; gap:10px; margin:0 0 14px; }",
       ".category-bar label { color:#B4BCD1; font-size:12px; white-space:nowrap; }",
       ".category-bar select { flex:1; min-width:0; border:1px solid rgba(134,108,255,.35); border-radius:9px; padding:9px 11px; background:#202438; color:#F5F4FF; font:inherit; font-size:13px; }",
-      ".category-tag { color:#B6A3FF !important; }",
+      ".category-tag { display:inline-block; justify-self:center; max-width:100%; overflow-wrap:anywhere; border-radius:6px; padding:4px 6px; color:#d8cafa; background:rgba(120,87,255,.18); border:1px solid rgba(148,122,255,.32); font-size:10px; line-height:1.25; }",
       ".items { max-height:520px; overflow-y:auto; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; padding-right:2px; align-content:start; }",
       ".item { width:100%; min-width:0; min-height:136px; display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center; text-align:center; border-radius:11px; padding:10px 7px; background:rgba(255,255,255,.04); color:#e7e9f6; border:1px solid transparent; }",
       ".item.active { background:rgba(134,108,255,.15); border-color:rgba(134,108,255,.55); }",
       ".item:hover { background:rgba(255,255,255,.09); }",
-      ".thumb { width:48px; height:62px; flex:none; border-radius:7px; background:#05060b; image-rendering:pixelated; object-fit:contain; }",
+      ".thumb-wrap { display:flex; position:relative; width:48px; height:62px; flex:none; border-radius:7px; background:#05060b; overflow:hidden; align-items:center; justify-content:center; }",
+      ".thumb { display:block; width:48px; height:62px; background:#05060b; image-rendering:pixelated; object-fit:contain; }",
+      ".thumb-gif-badge { position:absolute; right:2px; bottom:2px; padding:2px 4px; border-radius:4px; background:rgba(90,68,207,.9); color:#fff; font-size:9px; font-weight:700; line-height:1.2; }",
       ".item-meta { min-width:0; max-width:100%; display:grid; gap:3px; } .item-meta strong { font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }",
       ".item-meta small { color:#8e99b1; font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }",
       ".detail { border:1px solid rgba(255,255,255,.085); background:rgba(255,255,255,.035); padding:17px; border-radius:14px; min-height:290px; }",
@@ -498,6 +505,7 @@ class GoveeLedPlayer extends HTMLElement {
 
   _renderItems() {
     if (!this.shadowRoot) return;
+    this._clearThumbnailTimer();
     this.shadowRoot.querySelectorAll("[data-filter]").forEach((button) =>
       button.classList.toggle("active", button.dataset.filter === this._filter)
     );
@@ -515,16 +523,14 @@ class GoveeLedPlayer extends HTMLElement {
         : "Votre galerie est vide. Enregistrez d'abord des créations dans LED Studio.") + "</div>";
     } else {
       list.innerHTML = filtered.map((item) => {
-        const colors = playerColors(item);
-        const type = item.kind === "animation" ? "GIF · " + (item.frames || []).length + " images" : "Image";
-        const target = item.target === "h6069" ? "H6069" : "H70B3";
+        const animated = item.kind === "animation" && item.target === "h70b3";
         const active = item.id === this._selectedId ? " active" : "";
         return '<button type="button" class="item' + active + '" data-id="' + playerEscape(item.id) + '">' +
-          '<canvas class="thumb" data-thumb="' + playerEscape(item.id) + '"></canvas>' +
-          '<span class="item-meta"><strong>' +
-          playerEscape(item.name) + '</strong><small>' + type + ' · ' + target +
-          '</small><small class="category-tag">' + playerEscape(playerCategory(item) || "Non classé") +
-          "</small></span></button>";
+          '<span class="thumb-wrap"><canvas class="thumb" data-thumb="' + playerEscape(item.id) + '"></canvas>' +
+          (animated ? '<span class="thumb-gif-badge">GIF</span>' : '') + '</span>' +
+          '<span class="item-meta"><strong>' + playerEscape(item.name) +
+          '</strong><span class="category-tag" title="' + playerEscape(playerCategory(item) || "Non classé") +
+          '">' + playerEscape(playerCategory(item) || "Non classé") + '</span></span></button>';
       }).join("");
       list.querySelectorAll("[data-thumb]").forEach((canvas) => {
         const art = filtered.find((item) => item.id === canvas.dataset.thumb);
@@ -536,8 +542,61 @@ class GoveeLedPlayer extends HTMLElement {
           this._renderItems();
         });
       });
+      this._startThumbnailPreviews(list, filtered);
     }
     this._renderSelection();
+  }
+
+  // GIF gallery thumbnails animate locally at their saved frame durations.
+  // This timer never contacts Home Assistant or the physical device.
+  _clearThumbnailTimer() {
+    if (this._thumbnailTimer !== undefined) {
+      clearTimeout(this._thumbnailTimer);
+      this._thumbnailTimer = undefined;
+    }
+  }
+
+  _startThumbnailPreviews(list, items) {
+    this._thumbnailState = new Map();
+    const artworks = new Map(items.map((item) => [item.id, item]));
+    for (const canvas of list.querySelectorAll("[data-thumb]")) {
+      const item = artworks.get(canvas.dataset.thumb);
+      if (!item || item.kind !== "animation" || item.target !== "h70b3" ||
+          !Array.isArray(item.frames) || item.frames.length < 2) continue;
+      this._thumbnailState.set(item.id, {
+        canvas, item, index: 0,
+        due: Date.now() + playerClamp(Number(item.frames[0].duration) || 100, 100, 2000),
+      });
+    }
+    this._resumeThumbnailPreviews();
+  }
+
+  _resumeThumbnailPreviews() {
+    if (this._thumbnailTimer !== undefined || !this.isConnected || document.hidden ||
+        !this._thumbnailState?.size) return;
+    const now = Date.now();
+    for (const state of this._thumbnailState.values()) {
+      state.due = now + playerClamp(Number(state.item.frames[state.index].duration) || 100, 100, 2000);
+    }
+    this._thumbnailTimer = setTimeout(() => this._tickThumbnailPreviews(), 80);
+  }
+
+  _tickThumbnailPreviews() {
+    this._thumbnailTimer = undefined;
+    if (!this.isConnected || document.hidden) return;
+    const now = Date.now();
+    let nextDelay = 2000;
+    for (const state of this._thumbnailState?.values() || []) {
+      if (state.due <= now) {
+        state.index = (state.index + 1) % state.item.frames.length;
+        this._paintCanvas(state.canvas, state.item.frames[state.index].colors, state.item.target);
+        state.due = now + playerClamp(Number(state.item.frames[state.index].duration) || 100, 100, 2000);
+      }
+      nextDelay = Math.min(nextDelay, Math.max(25, state.due - now));
+    }
+    if (this._thumbnailState?.size) {
+      this._thumbnailTimer = setTimeout(() => this._tickThumbnailPreviews(), nextDelay);
+    }
   }
 
   _renderSelection() {
