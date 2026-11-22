@@ -595,3 +595,121 @@ console.log("LED Studio: pixel separation contrast and native 20x26 geometry OK"
   }
 }
 console.log("LED Studio: browser three-zone layout, responsive fallback, hidden state and controls OK");
+
+
+// Rectangle selection in native 20x26 pixels: four-way cut-and-move,
+// black background, no wrap/resize, adjacent-frame integrity and undo.
+{
+  const {studio, calls, get} = fixture();
+  const original = Array(520).fill("#000000");
+  original[5 * 20 + 6] = "#ff0000";
+  original[5 * 20 + 7] = "#00ff00";
+  original[6 * 20 + 6] = "#0000ff";
+  original[5 * 20 + 8] = "#aaaaaa"; // destination pixel must be overwritten
+  const other = Array(520).fill("#123456");
+  studio._gifFrames = [
+    {colors:[...original], duration:170},
+    {colors:[...other], duration:330},
+  ];
+  studio._gifSelectMode = true;
+  studio._gifSelection = null;
+  studio._gifFrameIndex = 0;
+  studio._showGifFrame = () => { studio._h70 = [...studio._gifFrames[studio._gifFrameIndex].colors]; };
+  studio._setGifAreaSelection(5 * 20 + 6, 6 * 20 + 7);
+  assert.equal(studio._gifSelection.left, 6);
+  assert.equal(studio._gifSelection.right, 7);
+  assert.equal(studio._gifSelection.top, 5);
+  assert.equal(studio._gifSelection.bottom, 6);
+  assert.deepEqual(Array.from(studio._gifFrames[0].colors), original,
+    "making a selection must not paint or change the image");
+  const selection = {...studio._gifSelection};
+
+  studio._moveGifArea(1, 0);
+  const moved = studio._gifFrames[0].colors;
+  assert.equal(moved[5 * 20 + 6], "#000000", "vacated source becomes black");
+  assert.equal(moved[5 * 20 + 7], "#ff0000", "red pixel moves right");
+  assert.equal(moved[5 * 20 + 8], "#00ff00", "destination pixels are overwritten");
+  assert.equal(moved[6 * 20 + 7], "#0000ff", "blue pixel moves right");
+  assert.equal(moved[6 * 20 + 8], "#000000", "selected black pixel is moved too");
+  assert.equal(studio._gifSelection.left, 7, "selection follows its moved content");
+  assert.equal(studio._gifFrames[0].duration, 170);
+  assert.equal(studio._gifFrames[1].duration, 330);
+  assert.deepEqual(Array.from(studio._gifFrames[1].colors), other);
+  assert.equal(studio._gifUndo.length, 1);
+  assert.equal(calls.length, 0, "selection edits must remain local");
+
+  studio._undoGifEdit();
+  assert.deepEqual(Array.from(studio._gifFrames[0].colors), original);
+  assert.deepEqual({...studio._gifSelection}, selection, "undo restores the rectangle");
+  for (const [dx,dy,x,y] of [
+    [-1,0,5,5], [0,-1,6,4], [0,1,6,6],
+  ]) {
+    studio._moveGifArea(dx,dy);
+    assert.equal(studio._gifFrames[0].colors[y * 20 + x], "#ff0000",
+      "one-pixel displacement in each direction preserves source RGB");
+    studio._undoGifEdit();
+    assert.deepEqual(Array.from(studio._gifFrames[0].colors), original);
+  }
+
+  const history = studio._gifUndo.length;
+  studio._moveGifArea(2,0);
+  assert.equal(studio._gifUndo.length, history, "no two-pixel jump is accepted");
+  studio._setGifAreaSelection(0,19);
+  studio._moveGifArea(0,-1);
+  assert.equal(studio._gifUndo.length, history, "cannot move past top edge");
+  studio._setGifAreaSelection(19,19);
+  studio._moveGifArea(1,0);
+  assert.equal(studio._gifUndo.length, history, "cannot move past right edge");
+  studio._setGifAreaSelection(500,519);
+  studio._moveGifArea(0,1);
+  assert.equal(studio._gifUndo.length, history, "cannot move past bottom edge");
+  studio._setGifAreaSelection(0,0);
+  studio._moveGifArea(-1,0);
+  assert.equal(studio._gifUndo.length, history, "cannot move past left edge");
+  studio._clearGifAreaSelection();
+  assert.equal(studio._gifSelection, null);
+  studio._moveGifArea(1,0);
+  assert.equal(studio._gifUndo.length, history);
+  assert.equal(get("#gif-area-left").disabled, true);
+  assert.equal(get("#gif-area-up").disabled, true);
+}
+
+// Selection overlay uses CSS classes only; it cannot change pixel values.
+{
+  const {studio, get} = fixture();
+  studio._gifSelectMode = false;
+  studio._gifSelection = null;
+  const states = Array.from({length:520}, () => new Map());
+  get("#h70-grid").children = states.map((map) => ({
+    classList: { toggle(name, value) { map.set(name, !!value); } },
+  }));
+  studio._toggleGifAreaSelection();
+  assert.equal(studio._gifSelectMode, true);
+  assert.equal(get("#gif-select-area").textContent, "▧ Quitter la sélection");
+  assert.equal(get("#gif-area-direction").hidden, false);
+  studio._setGifAreaSelection(21, 42); // x1..2, y1..2
+  for (const idx of [21,22,41,42]) assert.equal(states[idx].get("pixel-selected"), true);
+  for (const idx of [0,20,23,43]) assert.equal(states[idx].get("pixel-selected"), false);
+  assert.equal(get("#gif-area-left").disabled, false);
+  assert.equal(get("#gif-area-up").disabled, false);
+  studio._toggleGifAreaSelection();
+  assert.equal(studio._gifSelectMode, false);
+  assert.equal(studio._gifSelection, null);
+  assert.equal(get("#gif-area-direction").hidden, true);
+  assert.equal(states[21].get("pixel-selected"), false);
+  assert.equal(studio._gifUndo.length, 0, "selecting pixels doesn't create edits");
+  assert.equal(studio._gifEdited, false);
+}
+
+{
+  const src = studioSource;
+  for (const id of ["gif-select-area", "gif-selection-clear", "gif-selection-hint",
+      "gif-area-direction", "gif-area-up", "gif-area-down", "gif-area-left", "gif-area-right"]) {
+    assert.equal(src.split('id="' + id + '"').length - 1, 1, id + " must have a single DOM element");
+  }
+  assert.match(src, /pointerdown[\s\S]*?_gifSelectMode[\s\S]*?_gifSelectionAnchor[\s\S]*?_setGifAreaSelection/);
+  assert.match(src, /_paintH70\(\) \{[\s\S]*?_updateGifAreaOverlay\(\)/);
+  assert.match(new Studio()._styles(), /\.matrix button\.pixel-selected \{/);
+  assert.match(new Studio()._styles(), /\.gif-area-direction\[hidden\]/);
+}
+console.log("LED Studio: 20x26 rectangular select, 4-way move, clipping, undo and overlay OK");
