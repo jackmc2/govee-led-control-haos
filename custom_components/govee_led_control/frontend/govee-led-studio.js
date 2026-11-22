@@ -1700,7 +1700,7 @@ class GoveeLedStudio extends HTMLElement {
       }
       .matrix-shell { width:min(100%,420px); box-sizing:border-box; margin:auto; padding:12px; border-radius:15px; background:#030408; box-shadow:inset 0 0 30px rgba(0,0,0,.8), 0 20px 50px rgba(0,0,0,.22); }
       /* A distinct graphite background draws consistent grid lines between all 520 LEDs. */
-      .matrix { display:grid; grid-template-columns:repeat(20,1fr); gap:3px; aspect-ratio:20/26; padding:2px; box-sizing:border-box; border-radius:6px; background:#3b4252; }
+      .matrix { display:grid; grid-template-columns:repeat(20,1fr); gap:3px; aspect-ratio:20/26; padding:2px; box-sizing:border-box; border-radius:6px; background:#7857ff; }
       .matrix.gif-drawing { touch-action:none; } .matrix button { min-width:0; padding:0; border-radius:2px; background:var(--pixel); box-shadow:0 0 2px color-mix(in srgb, var(--pixel) 20%, transparent); }
       .matrix.selecting-area { cursor:crosshair; touch-action:none; }
       .matrix button.pixel-selected { background:linear-gradient(rgba(235,55,73,.18),rgba(235,55,73,.18)),var(--pixel); box-shadow:inset 0 0 0 2px rgba(255,105,122,.86); }
