@@ -54,7 +54,7 @@
 **L'espace de création**, intégré à une carte Lovelace. La capture montre son état normal, éditeur refermé :
 
 - La zone **Importer ou créer** permet de charger un PNG, JPEG, WebP ou GIF, ou de commencer une nouvelle image / animation.
-- La **galerie** liste les créations enregistrées, avec aperçu, bouton **Modifier** et suppression.
+- La **galerie** affiche les créations sur **deux colonnes** quand la largeur le permet, avec miniatures, **catégorie clairement identifiée**, bouton **Modifier** et suppression. Une seule colonne reste utilisée sur écran très étroit.
 - Une **catégorie libre** peut être attribuée à chaque image ou GIF lors de son enregistrement (avec suggestions des catégories existantes). Les catégories se **créent, renomment et suppriment** aussi depuis la galerie. Renommer une catégorie actualise toutes ses créations ; la supprimer les passe dans **Non classé**, sans effacer les images ni GIF.
 - En ouvrant une création, l'éditeur affiche la matrice **20 × 26**, les outils de dessin, la palette, la luminosité et les images du GIF.
 - Le bouton **▶ Lire** prévisualise localement l'animation, sans transfert Bluetooth.
