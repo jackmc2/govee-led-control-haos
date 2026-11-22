@@ -655,17 +655,8 @@ console.log("LED Studio: browser three-zone layout, responsive fallback, hidden 
   studio._moveGifArea(2,0);
   assert.equal(studio._gifUndo.length, history, "no two-pixel jump is accepted");
   studio._setGifAreaSelection(0,19);
-  studio._moveGifArea(0,-1);
-  assert.equal(studio._gifUndo.length, history, "cannot move past top edge");
-  studio._setGifAreaSelection(19,19);
-  studio._moveGifArea(1,0);
-  assert.equal(studio._gifUndo.length, history, "cannot move past right edge");
-  studio._setGifAreaSelection(500,519);
-  studio._moveGifArea(0,1);
-  assert.equal(studio._gifUndo.length, history, "cannot move past bottom edge");
-  studio._setGifAreaSelection(0,0);
-  studio._moveGifArea(-1,0);
-  assert.equal(studio._gifUndo.length, history, "cannot move past left edge");
+  assert.equal(get("#gif-area-up").disabled, false, "clipping must work at the top edge");
+  assert.equal(get("#gif-area-right").disabled, false, "clipping must work at the right edge");
   studio._clearGifAreaSelection();
   assert.equal(studio._gifSelection, null);
   studio._moveGifArea(1,0);
@@ -713,3 +704,89 @@ console.log("LED Studio: browser three-zone layout, responsive fallback, hidden 
   assert.match(new Studio()._styles(), /\.gif-area-direction\[hidden\]/);
 }
 console.log("LED Studio: 20x26 rectangular select, 4-way move, clipping, undo and overlay OK");
+
+
+// At every edge, selected content is shifted and clipped rather than blocked
+// or wrapped to the opposite side. The selection follows only visible pixels.
+{
+  const cases = [
+    {dx:1,dy:0,from:[18,19],target:19,lost:18,outside:0,rect:{left:18,right:19,top:4,bottom:4},
+      clipped:{left:19,right:19,top:4,bottom:4}, first:4*20+18, second:4*20+19},
+    {dx:-1,dy:0,from:[0,1],target:0,lost:1,outside:19,rect:{left:0,right:1,top:4,bottom:4},
+      clipped:{left:0,right:0,top:4,bottom:4}, first:4*20+1, second:4*20},
+    {dx:0,dy:-1,rect:{left:8,right:8,top:0,bottom:1},
+      clipped:{left:8,right:8,top:0,bottom:0}, first:1*20+8, second:8,
+      targetIndex:8,sourceIndex:1*20+8,oppositeIndex:25*20+8},
+    {dx:0,dy:1,rect:{left:8,right:8,top:24,bottom:25},
+      clipped:{left:8,right:8,top:25,bottom:25}, first:24*20+8, second:25*20+8,
+      targetIndex:25*20+8,sourceIndex:24*20+8,oppositeIndex:8},
+  ];
+
+  for(const c of cases) {
+    const {studio,calls,get}=fixture();
+    const colors=Array(520).fill("#000000");
+    colors[c.first]="#ff0000";
+    colors[c.second]="#00ff00";
+    const other=Array(520).fill("#224466");
+    studio._gifFrames=[{colors:[...colors],duration:210},{colors:[...other],duration:320}];
+    studio._gifSelectMode=true;
+    studio._gifSelection={...c.rect};
+    studio._showGifFrame=()=>{studio._h70=[...studio._gifFrames[studio._gifFrameIndex].colors]};
+    studio._updateGifAreaControls();
+    const direction=c.dx===1?"#gif-area-right":c.dx===-1?"#gif-area-left":c.dy===1?"#gif-area-down":"#gif-area-up";
+    assert.equal(get(direction).disabled,false,"edge shift button stays enabled");
+    studio._moveGifArea(c.dx,c.dy);
+    const now=studio._gifFrames[0].colors;
+    const targetIndex=c.targetIndex ?? (4*20+c.target);
+    const sourceIndex=c.sourceIndex ?? (4*20+c.lost);
+    const oppositeIndex=c.oppositeIndex ?? (4*20+c.outside);
+    assert.equal(now[targetIndex],"#ff0000","visible selected pixel moves one cell");
+    assert.equal(now[sourceIndex],"#000000","the vacated source becomes black");
+    assert.equal(now[oppositeIndex],"#000000","clipped pixels must never wrap around");
+    assert.deepEqual({...studio._gifSelection},c.clipped,"selection shrinks at image edge");
+    assert.equal(studio._gifUndo.length,1,"clipped shift is undoable");
+    assert.deepEqual(Array.from(studio._gifFrames[1].colors),other,"other GIF frames are untouched");
+    assert.equal(studio._gifFrames[0].duration,210);
+    assert.equal(calls.length,0,"no Home Assistant calls while editing");
+    studio._undoGifEdit();
+    assert.deepEqual(Array.from(studio._gifFrames[0].colors),colors,"undo restores every original pixel");
+    assert.deepEqual({...studio._gifSelection},c.rect,"undo restores the original rectangle");
+  }
+}
+
+// The last selected pixel is allowed to leave the grid completely. At that
+// point the selection disappears, but Undo restores both pixel and selection.
+{
+  const {studio,get}=fixture();
+  const colors=Array(520).fill("#000000");
+  colors[20*5+19]="#abcdef";
+  studio._gifSelectMode=true;
+  studio._gifSelection={left:19,right:19,top:5,bottom:5};
+  studio._gifFrames=[{colors:[...colors],duration:150}];
+  studio._showGifFrame=()=>{};
+  studio._updateGifAreaControls();
+  assert.equal(get("#gif-area-right").disabled,false);
+  studio._moveGifArea(1,0);
+  assert.equal(studio._gifFrames[0].colors[20*5+19],"#000000");
+  assert.equal(studio._gifSelection,null,"nothing remains selected after the final pixel leaves");
+  assert.equal(get("#gif-area-right").disabled,true);
+  assert.equal(studio._gifUndo.length,1);
+  studio._undoGifEdit();
+  assert.equal(studio._gifFrames[0].colors[20*5+19],"#abcdef");
+  assert.deepEqual({...studio._gifSelection},{left:19,right:19,top:5,bottom:5});
+}
+
+// Moving an entirely black area is still an undoable selection move.
+{
+  const {studio}=fixture();
+  studio._gifSelectMode=true;
+  studio._gifSelection={left:18,right:19,top:3,bottom:3};
+  studio._gifFrames=[{colors:Array(520).fill("#000000"),duration:100}];
+  studio._showGifFrame=()=>{};
+  studio._moveGifArea(1,0);
+  assert.deepEqual({...studio._gifSelection},{left:19,right:19,top:3,bottom:3});
+  assert.equal(studio._gifUndo.length,1);
+  studio._undoGifEdit();
+  assert.deepEqual({...studio._gifSelection},{left:18,right:19,top:3,bottom:3});
+}
+console.log("LED Studio: clip selected rectangles at all four edges, without wrap, with undo OK");
