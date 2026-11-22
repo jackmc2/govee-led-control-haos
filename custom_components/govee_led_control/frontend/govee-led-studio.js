@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.5.21-rgb-palette-right-click";
+const CARD_VERSION = "0.5.22-compact-image-actions";
 const H70_WIDTH = 20;
 const H70_HEIGHT = 26;
 const H70_PIXELS = H70_WIDTH * H70_HEIGHT;
@@ -269,14 +269,12 @@ class GoveeLedStudio extends HTMLElement {
                   </div>
                   <input id="gif-frame-range" aria-label="Numéro d'image du GIF" type="range" min="1" max="1" value="1">
                   <div class="gif-filmstrip" id="gif-filmstrip" aria-label="Images du GIF"></div>
-                  <div class="gif-block-heading gif-block-heading-sub"><span>ORDRE DES IMAGES</span></div>
-                  <div class="gif-order-actions">
-                    <button id="gif-move-earlier" title="Reculer l'image sélectionnée dans l'ordre du GIF" type="button">← Reculer</button>
-                    <button id="gif-move-later" title="Avancer l'image sélectionnée dans l'ordre du GIF" type="button">Avancer →</button>
-                  </div>
-                  <div class="gif-editor-actions">
-                    <button id="gif-duplicate" type="button">+ Ajouter une image</button>
-                    <button id="gif-delete" title="Supprimer l'image sélectionnée du GIF" type="button">− Supprimer l'image</button>
+                  <div class="gif-block-heading gif-block-heading-sub"><span>IMAGES</span></div>
+                  <div class="gif-order-actions" aria-label="Actions sur les images du GIF">
+                    <button id="gif-move-earlier" title="Reculer l'image sélectionnée dans le GIF" aria-label="Reculer l'image" type="button"><ha-icon icon="mdi:arrow-left"></ha-icon></button>
+                    <button id="gif-move-later" title="Avancer l'image sélectionnée dans le GIF" aria-label="Avancer l'image" type="button"><ha-icon icon="mdi:arrow-right"></ha-icon></button>
+                    <button id="gif-duplicate" title="Ajouter une image après l'image sélectionnée" aria-label="Ajouter une image" type="button"><ha-icon icon="mdi:plus"></ha-icon></button>
+                    <button id="gif-delete" title="Supprimer l'image sélectionnée du GIF" aria-label="Supprimer l'image" type="button"><ha-icon icon="mdi:delete-outline"></ha-icon></button>
                   </div>
                 </section>
 
@@ -1653,7 +1651,7 @@ class GoveeLedStudio extends HTMLElement {
       .gif-block-heading small { font-size:10px; font-weight:500; letter-spacing:0; color:#8f96ae; }
       .gif-block-heading-sub { padding-top:4px; }
       .gif-editor-toolbar { display:grid; grid-template-columns:36px minmax(70px,1fr) 36px auto; align-items:center; gap:7px; }
-      .gif-editor-toolbar button,.gif-order-actions button,.gif-editor-actions button,.gif-retouch-actions button,.gif-pixel-shift button { padding:8px; font-size:12px; min-height:36px; }
+      .gif-editor-toolbar button,.gif-order-actions button,.gif-retouch-actions button,.gif-pixel-shift button { padding:8px; font-size:12px; min-height:36px; }
       .gif-editor-toolbar .gif-frame-timing { display:flex; align-items:center; justify-content:end; gap:5px; white-space:nowrap; }
       .gif-editor-toolbar input[type=number] { box-sizing:border-box; width:58px; border:1px solid rgba(255,255,255,.2); color:white; background:#212536; padding:6px; border-radius:7px; text-align:center; }
       .gif-editor-toolbar button.active,.gif-retouch-actions button.active { background:#5f4dca; color:white; }
@@ -1665,8 +1663,10 @@ class GoveeLedStudio extends HTMLElement {
       .gif-frame canvas { width:30px; height:39px; background:black; image-rendering:pixelated; }
       .gif-frame span { font-size:10px; color:#a0a8b6; }
       .gif-frame.active { border-color:#8c77ff; background:rgba(126,99,255,.26); }
-      .gif-order-actions,.gif-editor-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
-      .gif-order-actions button { border:1px solid rgba(148,122,255,.24); background:rgba(120,87,255,.12); }
+      .gif-order-actions { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; min-width:0; }
+      .gif-order-actions button { display:flex; align-items:center; justify-content:center; width:100%; min-width:0; min-height:40px; padding:7px; border:1px solid rgba(148,122,255,.24); background:rgba(120,87,255,.12); }
+      .gif-order-actions button ha-icon { --mdc-icon-size:20px; }
+      .gif-order-actions #gif-delete { color:#ff9ca9; }
       .gif-pixel-shift { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
       .gif-pixel-shift span { font-size:12px; color:#bdc1d4; }
       .gif-shift-buttons { display:flex; gap:7px; }
@@ -1700,7 +1700,7 @@ class GoveeLedStudio extends HTMLElement {
       }
       .matrix-shell { width:min(100%,420px); box-sizing:border-box; margin:auto; padding:12px; border-radius:15px; background:#030408; box-shadow:inset 0 0 30px rgba(0,0,0,.8), 0 20px 50px rgba(0,0,0,.22); }
       /* A distinct graphite background draws consistent grid lines between all 520 LEDs. */
-      .matrix { display:grid; grid-template-columns:repeat(20,1fr); gap:3px; aspect-ratio:20/26; padding:2px; box-sizing:border-box; border-radius:6px; background:#7857ff; }
+      .matrix { display:grid; grid-template-columns:repeat(20,1fr); gap:3px; aspect-ratio:20/26; padding:2px; box-sizing:border-box; border-radius:6px; background:#3b4252; }
       .matrix.gif-drawing { touch-action:none; } .matrix button { min-width:0; padding:0; border-radius:2px; background:var(--pixel); box-shadow:0 0 2px color-mix(in srgb, var(--pixel) 20%, transparent); }
       .matrix.selecting-area { cursor:crosshair; touch-action:none; }
       .matrix button.pixel-selected { background:linear-gradient(rgba(235,55,73,.18),rgba(235,55,73,.18)),var(--pixel); box-shadow:inset 0 0 0 2px rgba(255,105,122,.86); }
