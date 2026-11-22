@@ -369,7 +369,10 @@ console.log("LED Player: static H70B3 image, native GIF, H6069 image OK");
   assert.equal(instance._thumbnailState.size, 1);
   assert.equal(timers.size, 1);
   instance._thumbnailState.get("gif").due = 0;
-  instance._tickThumbnailPreviews();
+  const [scheduledId, scheduledTick] = [...timers.entries()][0];
+  timers.delete(scheduledId); // Simulate the browser consuming that timeout.
+  scheduledTick.callback();
+  assert.equal(timers.size, 1);
   assert.equal(painted.length, 1);
   assert.equal(painted[0].canvas, gifCanvas);
   assert.equal(painted[0].pixels, frameB.colors);
