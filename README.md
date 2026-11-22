@@ -221,3 +221,7 @@ node tests/test_led_player.mjs
 ## 🤝 Licence
 
 Projet communautaire **non officiel**, sans affiliation avec Govee ou Home Assistant. Distribué selon les termes de la [licence MIT](LICENSE), avec conservation des mentions de copyright applicables.
+
+### Affichage LED Studio sur grand écran (v0.5.14)
+
+Lorsque **LED Studio** dispose d'au moins **940 px de largeur réelle dans le tableau de bord**, l'interface se répartit en deux colonnes : **création / importation / éditeur à gauche** et **gestion des catégories / bibliothèque à droite**. Les deux miniatures par ligne de la bibliothèque sont conservées. Dans un emplacement Lovelace plus étroit (ou sur mobile), l'interface reste verticale : la largeur de la carte, plutôt que la résolution de l'écran, détermine le mode. Pour bénéficier de l'affichage deux colonnes sur ordinateur, donner à la carte une section de tableau de bord suffisamment large.
