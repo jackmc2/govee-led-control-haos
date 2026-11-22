@@ -414,3 +414,94 @@ console.log("LED Studio: unified image/GIF editor, import, save, native upload a
     "the matrix and presets can share a row only when width permits");
   assert.match(css, /@container\(max-width:420px\).*\.gallery-list \{ grid-template-columns:minmax\(0,1fr\)/);
 }
+
+
+// Pixel shifting edits one 20x26 frame without horizontal wrapping,
+// preserving untouched frames and their durations, and remains undoable.
+{
+  const { studio, calls, get } = fixture();
+  studio._editorKind = "animation";
+  const first = Array(520).fill("#000000");
+  first[0] = "#ff0000"; // top-left
+  first[19] = "#00ff00"; // top-right, must be clipped on shift-right
+  first[20] = "#0000ff"; // next row, must NOT wrap into previous row
+  studio._gifFrames = [
+    {colors:first, duration:140},
+    {colors:Array(520).fill("#112233"), duration:320},
+  ];
+  studio._showGifFrame = () => { studio._h70 = [...studio._gifFrames[studio._gifFrameIndex].colors]; };
+  const initial = [...first];
+
+  studio._shiftGifPixels(1);
+  assert.equal(studio._gifFrames[0].colors[0], "#000000");
+  assert.equal(studio._gifFrames[0].colors[1], "#ff0000");
+  assert.equal(studio._gifFrames[0].colors[19], "#000000");
+  assert.equal(studio._gifFrames[0].colors[20], "#000000");
+  assert.equal(studio._gifFrames[0].colors[21], "#0000ff");
+  assert.equal(studio._gifFrames[0].duration, 140);
+  assert.equal(studio._gifFrames[1].colors[0], "#112233");
+  assert.equal(studio._gifUndo.length, 1);
+  studio._undoGifEdit();
+  assert.deepEqual(Array.from(studio._gifFrames[0].colors), initial);
+
+  studio._shiftGifPixels(-1);
+  assert.equal(studio._gifFrames[0].colors[18], "#00ff00");
+  assert.equal(studio._gifFrames[0].colors[19], "#000000");
+  assert.equal(studio._gifFrames[0].colors[20], "#000000");
+  studio._undoGifEdit();
+  assert.deepEqual(Array.from(studio._gifFrames[0].colors), initial);
+
+  studio._gifFrames[0].colors.fill("#000000");
+  studio._gifUndo = [];
+  studio._shiftGifPixels(1);
+  assert.equal(studio._gifUndo.length, 0, "no undo entry for an unchanged all-black frame");
+
+  studio._gifEditing = false;
+  studio._shiftGifPixels(1);
+  assert.equal(studio._gifUndo.length, 0);
+  assert.equal(calls.length, 0, "shifting never sends a physical device command");
+  assert.ok(studioSource.includes('id="gif-shift-left"'));
+  assert.ok(studioSource.includes('id="gif-shift-right"'));
+}
+
+// Reordering the timeline swaps complete frames (pixels + timing), preserves
+// the selected artwork, respects boundaries and can be undone.
+{
+  const {studio, calls} = fixture();
+  studio._editorKind = "animation";
+  studio._gifFrames = [
+    {colors:Array(520).fill("#110000"), duration:100},
+    {colors:Array(520).fill("#220000"), duration:200},
+    {colors:Array(520).fill("#330000"), duration:300},
+  ];
+  studio._showGifFrame = () => { studio._h70 = [...studio._gifFrames[studio._gifFrameIndex].colors]; };
+  studio._moveGifFrame(-1);
+  assert.equal(studio._gifFrameIndex, 0);
+  assert.equal(studio._gifUndo.length, 0, "first frame cannot move earlier");
+
+  studio._moveGifFrame(1);
+  assert.equal(studio._gifFrameIndex, 1);
+  assert.deepEqual(Array.from(studio._gifFrames, (f) => f.duration), [200,100,300]);
+  assert.equal(studio._h70[0], "#110000");
+  assert.equal(studio._gifUndo.length, 1);
+  studio._moveGifFrame(1);
+  assert.equal(studio._gifFrameIndex, 2);
+  assert.deepEqual(Array.from(studio._gifFrames, (f) => f.duration), [200,300,100]);
+  studio._moveGifFrame(1);
+  assert.equal(studio._gifUndo.length, 2, "last frame cannot move later");
+
+  studio._undoGifEdit();
+  assert.equal(studio._gifFrameIndex, 1);
+  assert.deepEqual(Array.from(studio._gifFrames, (f) => f.duration), [200,100,300]);
+  studio._undoGifEdit();
+  assert.equal(studio._gifFrameIndex, 0);
+  assert.deepEqual(Array.from(studio._gifFrames, (f) => f.duration), [100,200,300]);
+
+  studio._editorKind = "art";
+  studio._moveGifFrame(1);
+  assert.equal(studio._gifFrameIndex, 0, "still artwork cannot be reordered");
+  assert.equal(calls.length, 0);
+  assert.ok(studioSource.includes('id="gif-move-earlier"'));
+  assert.ok(studioSource.includes('id="gif-move-later"'));
+}
+console.log("LED Studio: image shifts, frame reordering, bounds, durations and undo OK");
