@@ -547,9 +547,9 @@ console.log("LED Studio: image shifts, frame reordering, bounds, durations and u
   assert.match(new Studio()._styles(), /\.gif-editor-block \{[^}]*border-top:/);
   assert.match(new Studio()._styles(), /@container\(max-width:440px\) \{\s*\.gif-editor-toolbar/,
     "narrow displays retain readable playback and timing controls");
-  assert.match(new Studio()._styles(), /\\.gif-drawing-actions \\{ display:grid;/);
+  assert.match(new Studio()._styles(), /\.gif-drawing-actions \{ display:grid;/);
   assert.ok(saveMarkup.includes('class="gif-editor-save"'));
-  assert.match(new Studio()._styles(), /\\.gif-save-panel\\[hidden\\] \\{ display:none !important; \\}/);
+  assert.match(new Studio()._styles(), /\.gif-save-panel\[hidden\] \{ display:none !important; \}/);
 }
 console.log("LED Studio: structured animation/drawing/save controls and responsive styling OK");
 
