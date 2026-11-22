@@ -696,7 +696,7 @@ class GoveeLedStudio extends HTMLElement {
     if (frame.colors[index] === color) return;
     frame.colors[index] = color;
     this._h70[index] = color;
-    const pixel = this.shadowRoot.querySelector("#h70-grid")?.children[index];
+    const pixel = this.shadowRoot?.querySelector("#h70-grid")?.children?.[index];
     if (pixel) pixel.style.setProperty("--pixel", color);
     this._markGifEdited();
     this._drawGifThumbnail(this._gifFrameIndex);
