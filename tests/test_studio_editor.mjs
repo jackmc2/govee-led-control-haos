@@ -516,9 +516,14 @@ console.log("LED Studio: image shifts, frame reordering, bounds, durations and u
   );
   const timeline = markup.indexOf('class="gif-editor-block gif-timeline gif-animation-only"');
   const drawing = markup.indexOf('class="gif-editor-block gif-drawing-tools"');
-  const saving = markup.indexOf('class="gif-editor-block gif-editor-save-block"');
-  assert.ok(timeline >= 0 && timeline < drawing && drawing < saving,
-    "timeline comes before selected-frame drawing tools and save form");
+  const middle = studioSource.indexOf('class="matrix-center-column"');
+  const matrix = studioSource.indexOf('class="matrix-shell"', middle);
+  const saving = studioSource.indexOf('id="gif-save-panel"', matrix);
+  const sidebar = studioSource.indexOf('<div class="side-panel">', saving);
+  const saveMarkup = studioSource.slice(saving, sidebar);
+  assert.ok(timeline >= 0 && timeline < drawing && middle > 0 && matrix > middle &&
+    saving > matrix && sidebar > saving,
+    "timeline and drawing tools stay left, save form follows the matrix in the center column");
 
   for (const id of [
     "gif-prev", "gif-preview-play", "gif-next", "gif-frame-duration", "gif-frame-range",
@@ -530,20 +535,21 @@ console.log("LED Studio: image shifts, frame reordering, bounds, durations and u
   }
   for (const id of ["gif-shift-left", "gif-shift-right", "gif-undo", "gif-erase", "gif-clear-frame", "gif-clear-still"]) {
     const index = markup.indexOf('id="' + id + '"');
-    assert.ok(index > drawing && index < saving, id + " belongs to frame drawing controls");
+    assert.ok(index > drawing && index < markup.length, id + " belongs to frame drawing controls");
     assert.equal(markup.split('id="' + id + '"').length - 1, 1, id + " must be unique");
   }
   for (const id of ["gif-editor-name", "gif-editor-category", "gif-editor-save"]) {
-    assert.ok(markup.indexOf('id="' + id + '"') > saving, id + " belongs to the save form");
-    assert.equal(markup.split('id="' + id + '"').length - 1, 1, id + " must be unique");
+    assert.ok(saveMarkup.indexOf('id="' + id + '"') > 0, id + " belongs to the center-column save form");
+    assert.equal(studioSource.split('id="' + id + '"').length - 1, 1, id + " must be unique");
   }
   assert.ok(markup.indexOf('id="gif-frame-range"') < markup.indexOf('id="gif-filmstrip"'),
     "slider precedes the GIF thumbnails");
   assert.match(new Studio()._styles(), /\.gif-editor-block \{[^}]*border-top:/);
   assert.match(new Studio()._styles(), /@container\(max-width:440px\) \{\s*\.gif-editor-toolbar/,
     "narrow displays retain readable playback and timing controls");
-  assert.match(new Studio()._styles(), /\.gif-retouch-actions \{ display:grid;/);
-  assert.ok(markup.includes('class="gif-editor-save"'));
+  assert.match(new Studio()._styles(), /\\.gif-drawing-actions \\{ display:grid;/);
+  assert.ok(saveMarkup.includes('class="gif-editor-save"'));
+  assert.match(new Studio()._styles(), /\\.gif-save-panel\\[hidden\\] \\{ display:none !important; \\}/);
 }
 console.log("LED Studio: structured animation/drawing/save controls and responsive styling OK");
 
@@ -575,7 +581,7 @@ console.log("LED Studio: pixel separation contrast and native 20x26 geometry OK"
   assert.match(wide, /\.studio-workspace \.gif-editor \{ grid-column:1; grid-row:2;/);
   assert.match(wide, /\.studio-workspace \.side-panel \{ grid-column:1; grid-row:3;/);
   assert.match(wide, /\.studio-workspace \.gif-panel \{[\s\S]*?grid-column:1; grid-row:4;/);
-  assert.match(wide, /\.studio-workspace \.matrix-shell \{[\s\S]*?grid-column:2; grid-row:1 \/ span 4;/);
+  assert.match(wide, /\.studio-workspace \.matrix-center-column \{[\s\S]*?grid-column:2; grid-row:1 \/ span 4;/);
   assert.match(wide, /\.gallery-panel \{ grid-column:2;/,
     "gallery stays to the right of the two-column editing workspace");
   assert.match(wide, /\.studio-workspace:not\(\.is-editing\) \.gif-panel \{ grid-column:1\/-1; grid-row:1;/,
@@ -676,7 +682,7 @@ console.log("LED Studio: browser three-zone layout, responsive fallback, hidden 
   }));
   studio._toggleGifAreaSelection();
   assert.equal(studio._gifSelectMode, true);
-  assert.equal(get("#gif-select-area").textContent, "▧ Quitter la sélection");
+  assert.equal(get("#gif-select-area").title, "Quitter la sélection");
   assert.equal(get("#gif-area-direction").hidden, false);
   studio._setGifAreaSelection(21, 42); // x1..2, y1..2
   for (const idx of [21,22,41,42]) assert.equal(states[idx].get("pixel-selected"), true);
@@ -687,6 +693,7 @@ console.log("LED Studio: browser three-zone layout, responsive fallback, hidden 
   assert.equal(studio._gifSelectMode, false);
   assert.equal(studio._gifSelection, null);
   assert.equal(get("#gif-area-direction").hidden, true);
+  assert.equal(get("#gif-select-area").title, "Sélectionner une zone");
   assert.equal(states[21].get("pixel-selected"), false);
   assert.equal(studio._gifUndo.length, 0, "selecting pixels doesn't create edits");
   assert.equal(studio._gifEdited, false);
@@ -932,3 +939,62 @@ console.log("LED Studio: saturated RGB swatches, right-click eraser and Undo OK"
   assert.match(new Studio()._styles(), /\.matrix \{[^}]*background:#3b4252;/);
 }
 console.log("LED Studio: one-row icon image actions and graphite grid contrast OK");
+
+
+// Icon-only drawing toolbar matches IMAGES, with all existing actions and
+// accessible titles, and the save card lives below the center matrix.
+{
+  const src=studioSource, css=new Studio()._styles();
+  const start=src.indexOf('class="gif-drawing-actions"');
+  const end=src.indexOf('<small id="gif-selection-hint"',start);
+  assert.ok(start > 0 && end > start);
+  const toolbar=src.slice(start,end);
+  const actions=[
+    ['gif-shift-left','mdi:arrow-left'],
+    ['gif-shift-right','mdi:arrow-right'],
+    ['gif-select-area','mdi:selection'],
+    ['gif-undo','mdi:undo'],
+    ['gif-erase','mdi:eraser'],
+  ];
+  let previous=-1;
+  for(const [id,icon] of actions){
+    const index=toolbar.indexOf('id="' + id + '"');
+    assert.ok(index > previous,id + " appears in the intended order");
+    previous=index;
+    assert.match(toolbar.slice(index,index+220),new RegExp('aria-label="[^"]+"[^>]*><ha-icon icon="' + icon + '"'));
+    assert.equal(src.split('id="' + id + '"').length - 1,1);
+  }
+  assert.match(toolbar,/class="gif-clear-slot"/);
+  assert.match(toolbar,/id="gif-clear-frame"[^>]*aria-label="Effacer l'image"[^>]*><ha-icon icon="mdi:delete-sweep-outline"/);
+  assert.match(toolbar,/id="gif-clear-still"[^>]*aria-label="Effacer l'image"[^>]*><ha-icon icon="mdi:delete-sweep-outline"/);
+  assert.match(css,/\\.gif-drawing-actions \\{[^}]*grid-template-columns:repeat\\(6,minmax\\(0,1fr\\)\\)/);
+  assert.match(css,/\\.gif-drawing-actions button ha-icon,[^}]*--mdc-icon-size:20px;/);
+  assert.match(css,/\\.gif-clear-slot button\\[hidden\\] \\{ display:none !important; \\}/);
+  assert.match(css,/\\.gif-area-pad \\{[^}]*grid-template-columns:repeat\\(4,minmax\\(0,1fr\\)\\)/);
+  assert.ok(src.indexOf('class="matrix-shell"') < src.indexOf('id="gif-save-panel"'));
+  assert.match(css,/\\.studio-workspace \\.matrix-center-column \\{[^}]*grid-column:2; grid-row:1 \\/ span 4;/);
+  assert.match(css,/\\.gif-save-panel\\[hidden\\] \\{ display:none !important; \\}/);
+  assert.match(src,/root\\.querySelector\\("#gif-save-panel"\\)\\.hidden = !active;/);
+}
+// Opening and closing a creation should show/hide both editor and save panel.
+{
+  const {studio,get}=fixture();
+  studio._renderGifEditor=Studio.prototype._renderGifEditor;
+  studio._updateEditorPlayButton=()=>{};
+  studio._updateGifTools=()=>{};
+  studio._gifEditing=false;
+  studio._gifFrames=[];
+  studio._renderGifEditor();
+  assert.equal(get("#gif-editor").hidden,true);
+  assert.equal(get("#gif-save-panel").hidden,true);
+  studio._gifEditing=true;
+  studio._gifFrames=[{colors:Array(520).fill("#000000"),duration:150}];
+  studio._editorKind="art";
+  studio._renderGifEditor();
+  assert.equal(get("#gif-editor").hidden,false);
+  assert.equal(get("#gif-save-panel").hidden,false);
+  studio._gifEditing=false;
+  studio._renderGifEditor();
+  assert.equal(get("#gif-save-panel").hidden,true);
+}
+console.log("LED Studio: icon-only drawing tools and center-column save form OK");
