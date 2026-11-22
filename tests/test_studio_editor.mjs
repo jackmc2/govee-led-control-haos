@@ -384,3 +384,33 @@ console.log("LED Studio: unified image/GIF editor, import, save, native upload a
   studio._renderGallery();
   assert.doesNotMatch(get("#gallery-list").innerHTML, /<script>/);
 }
+
+
+// Desktop LED Studio uses two *main* columns (editor left, gallery right),
+// distinct from the existing two-column artwork grid inside the gallery.
+// Responsive fallbacks retain the original full-width stacked layout.
+{
+  const src = studioSource;
+  const columns = src.indexOf('<div class="studio-columns">');
+  const workspace = src.indexOf('<div class="studio-workspace">', columns);
+  const toolbar = src.indexOf('<section class="toolbar"', workspace);
+  const stage = src.indexOf('<main id="curtain"', workspace);
+  const workspaceClose = src.indexOf('        </main>\n          </div>', stage);
+  const gallery = src.indexOf('<section class="gallery-panel">', workspaceClose);
+  const library = src.indexOf('id="gallery-list"', gallery);
+  const columnsClose = src.indexOf('        </section>\n        </div>\n      </ha-card>', library);
+  assert.ok(columns >= 0 && workspace > columns && toolbar > workspace &&
+    stage > toolbar && workspaceClose > stage && gallery > workspaceClose &&
+    library > gallery && columnsClose > library,
+    "desktop wrapper must place editor and gallery in sibling columns");
+  const css = (new Studio())._styles();
+  assert.match(css, /\.studio-columns \{ display:block; min-width:0; \}/,
+    "narrow cards remain in the original vertical flow");
+  assert.match(css, /@container \(min-width:940px\) \{[\s\S]*?\.studio-columns \{ display:grid; grid-template-columns:minmax\(0,1\.08fr\) minmax\(0,1fr\);/,
+    "desktop breakpoint creates two independent columns");
+  assert.match(css, /\.gallery-panel \{ border-top:0; border-left:/,
+    "the gallery has a vertical divider in the desktop workspace");
+  assert.match(css, /@container \(min-width:1580px\)/,
+    "the matrix and presets can share a row only when width permits");
+  assert.match(css, /@container\(max-width:420px\).*\.gallery-list \{ grid-template-columns:minmax\(0,1fr\)/);
+}
