@@ -1071,7 +1071,7 @@ class GoveeLedStudio extends HTMLElement {
       );
       if (answer === null) return;
       newName = answer.trim();
-      if (!newName || newName.length > 40 || /[\\x00-\\x1f]/.test(newName)) {
+      if (!newName || newName.length > 40 || /[\x00-\x1f]/.test(newName)) {
         return this._setStatus("Indiquez un nom valide (40 caractères maximum, une ligne).", true);
       }
     } else {
