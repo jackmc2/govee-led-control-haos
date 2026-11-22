@@ -100,3 +100,13 @@ Le renommage met à jour **toutes les images et tous les GIF** concernés. La su
 La gestion se fait dans Home Assistant via la commande WebSocket `govee_led_control/gallery/category/manage`, sans modifier les données des pixels ni leur luminosité. Les anciennes galeries sont prises en charge automatiquement.
 
 **Mise à jour :** installer le dossier complet en 0.5.11, redémarrer Home Assistant pour enregistrer la nouvelle commande WebSocket, puis actualiser le navigateur (Ctrl+F5).
+
+## Miniatures harmonisées LED Studio / LED Player (0.5.13)
+
+- Dans **LED Studio**, la puce de catégorie affiche uniquement le nom (par exemple **Noël**, sans « Catégorie : »).
+- Dans **LED Player**, les miniatures des GIF sont **animées localement**, en respectant les durées d'images enregistrées, et portent une petite puce **GIF** comme dans LED Studio.
+- La ligne descriptive redondante « GIF · 16 images · H70B3 » est supprimée des tuiles du Player. Chaque vignette affiche le nom et la catégorie encadrée, ou **Non classé**.
+- Les animations des miniatures s'arrêtent lorsque la carte est déconnectée ou que l'onglet est masqué. Elles ne lancent aucun service Home Assistant et ne sollicitent jamais le Bluetooth.
+- Les filtres par type/catégorie, la luminosité mémorisée et la prévisualisation grand format restent inchangés.
+
+**Installation :** installer la version HACS v0.5.13, redémarrer Home Assistant, puis actualiser les deux cartes (Ctrl+F5).
