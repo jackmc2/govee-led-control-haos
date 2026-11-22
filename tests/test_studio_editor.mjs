@@ -349,3 +349,38 @@ console.log("LED Studio: unified image/GIF editor, import, save, native upload a
   assert.equal(select.value, "");
   assert.match(studio.testStatus.message, /conservés/);
 }
+
+
+// Gallery uses two-column compact cards and a separate, visible category badge.
+{
+  const { studio, get } = fixture();
+  studio._galleryItems = [
+    { id: "one", target: "h70b3", kind: "animation", name: "Bonhomme de neige",
+      category: "Noël", frames: [{ colors: Array(520).fill("#ffffff"), duration: 100 }] },
+    { id: "two", target: "h70b3", kind: "art", name: "Cadeau", category: "Fêtes",
+      colors: Array(520).fill("#123456") },
+    { id: "three", target: "h70b3", kind: "art", name: "Sans catégorie",
+      colors: Array(520).fill("#123456") },
+    { id: "legacy", target: "h6069", kind: "art", name: "Panneaux",
+      colors: Array(520).fill("#123456") },
+  ];
+  studio._stopGalleryPreviews = () => {};
+  studio._startGalleryPreviews = () => {};
+  studio._renderGallery();
+  const html = get("#gallery-list").innerHTML;
+  assert.equal((html.match(/class="gallery-item"/g) || []).length, 3);
+  assert.match(html, /Catégorie : Noël/);
+  assert.match(html, /Catégorie : Fêtes/);
+  assert.match(html, /Catégorie : Non classé/);
+  assert.match(html, /GIF animé · 1 images/);
+  assert.equal((html.match(/class="gallery-actions"/g) || []).length, 3);
+  assert.equal((html.match(/data-gallery-load=/g) || []).length, 3);
+  assert.equal((html.match(/data-gallery-delete=/g) || []).length, 3);
+  assert.doesNotMatch(html, /Panneaux/);
+  assert.match(studio._styles(), /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(studio._styles(), /@container\(max-width:420px\).*grid-template-columns:minmax\(0,1fr\)/);
+
+  studio._galleryItems[0].category = '<script>alert("x")</script>';
+  studio._renderGallery();
+  assert.doesNotMatch(get("#gallery-list").innerHTML, /<script>/);
+}
